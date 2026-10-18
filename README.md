@@ -2,6 +2,7 @@
 ## Học phần: Phát triển Dịch vụ Web / RESTful API
 > **Bài Thực Hành Số 1:** Cài đặt và cấu hình môi trường xây dựng API ("Hello World")  
 > **Bài Thực Hành Số 2:** Router, Middleware và Bảo mật với JWT trong RESTful API  
+> **Bài Thực Hành Số 3:** Xây dựng Dịch vụ Quản lý Sản phẩm theo Kiến trúc Hướng Dịch vụ (SOA)  
 
 ---
 
@@ -9,7 +10,7 @@
 
 1. [Tổng quan dự án](#1-tổng-quan-dự-án)
 2. [Yêu cầu đề bài & Bảng đối soát hoàn thành](#2-yêu-cầu-đề-bài--bảng-đối-soát-hoàn-thành)
-3. [Kiến trúc hệ thống & Luồng xử lý (Workflow)](#3-kiến-trúc-hệ-thống--luồng-xử-lý-workflow)
+3. [Kiến trúc hệ thống & Luồng xử lý (Workflow SOA)](#3-kiến-trúc-hệ-thống--luồng-xử-lý-workflow)
 4. [Cấu trúc cơ sở dữ liệu (Database Schema)](#4-cấu-trúc-cơ-sở-dữ-liệu-database-schema)
 5. [Cấu trúc thư mục mã nguồn](#5-cấu-trúc-thư-mục-mã-nguồn)
 6. [Yêu cầu môi trường & Công nghệ sử dụng](#6-yêu-cầu-môi-trường--công-nghệ-sử-dụng)
@@ -23,16 +24,21 @@
 
 ## 1. TỔNG QUAN DỰ ÁN
 
-Dự án này là chuỗi thực hành hoàn chỉnh nhằm xây dựng dịch vụ **RESTful API chuẩn hóa** sử dụng ngôn ngữ **Python** và nền tảng **Django / Django REST Framework (DRF)**.
+Dự án này là chuỗi thực hành hoàn chỉnh nhằm xây dựng hệ thống **RESTful API phân tán theo kiến trúc hướng dịch vụ (SOA - Service-Oriented Architecture)** sử dụng ngôn ngữ **Python** và nền tảng **Django / Django REST Framework (DRF)**.
 
-Dự án tích hợp đầy đủ nội dung của 2 bài thực hành:
+Dự án tích hợp đầy đủ nội dung của **cả 3 bài thực hành**:
 - **Bài thực hành số 1:** Thiết lập môi trường Python/Django, cài đặt REST Framework, xây dựng API đầu tiên in dòng chuỗi JSON `{"message": "hello-world"}` và kiểm thử qua Postman / Swagger.
-- **Bài thực hành số 2:** Mở rộng hệ thống với:
+- **Bài thực hành số 2:** Mở rộng hệ thống thành **Authentication Service (Cổng 8000)**:
   - Cơ chế định tuyến linh hoạt (**Router & URL Rewrite**).
   - Lớp lọc trung gian (**Custom Middleware**) để kiểm soát truy cập và xác thực token.
   - Cơ chế phân quyền và bảo mật qua **JSON Web Token (JWT)** với thuật toán HMAC-SHA256 (`HS256`).
   - Hỗ trợ giải mã mật khẩu truyền từ Client dưới dạng **Base64** hoặc mã băm **MD5**.
   - Tích hợp tài liệu tương tác tự động **Swagger UI (OpenAPI 3.0)**.
+- **Bài thực hành số 3:** Xây dựng **Product Management Service (Cổng 8001)** độc lập theo kiến trúc **SOA**:
+  - Chạy trên một cổng riêng (`localhost:8001/`) và cơ sở dữ liệu SQLite riêng (`products_db.sqlite3`).
+  - Đầy đủ bộ RESTful API CRUD: `GET /products`, `GET /products/:id`, `POST /products`, `PUT /products/:id`, `PATCH /products/:id`, `DELETE /products/:id`.
+  - Cơ chế xác thực liên dịch vụ (**Inter-Service Authentication**): Product Service tự động liên lạc sang Auth Service (`http://127.0.0.1:8000/auth`) để thẩm định tính hợp lệ của token JWT.
+  - Tích hợp tài liệu Swagger UI riêng biệt tại `http://localhost:8001/swagger/`.
 
 ---
 
@@ -55,52 +61,66 @@ Dự án tích hợp đầy đủ nội dung của 2 bài thực hành:
 | **7. Middleware bảo vệ API "Hello World" từ Bài 1** |  **100% Đạt** | `JWTAuthenticationMiddleware` tại `core/middleware.py`, đăng ký trong `settings.py`. Chặn `401 Unauthorized` nếu thiếu hoặc sai token; cho phép `200 OK` nếu token hợp lệ. |
 | **8. Kiểm tra qua Postman / Swagger UI** |  **100% Đạt** | Tích hợp thư viện `drf-spectacular` tạo giao diện Swagger UI tại `http://localhost:8000/swagger/` và `http://localhost:8000/docs/`. |
 
+### Đối chiếu Bài Thực Hành Số 3:
+| Yêu cầu trong PDF Bài 3 | Tình trạng | Vị trí triển khai trong Codebase |
+| :--- | :---: | :--- |
+| **1. Khởi tạo một cổng mới cho service (`localhost:***1/`)** |  **100% Đạt** | Service quản lý sản phẩm chạy độc lập trên cổng `8001` (`http://localhost:8001/`). Có script chạy riêng [run_product_service.bat](file:///d:/CODES/Py/Django_Learning/run_product_service.bat). |
+| **2. Cơ sở dữ liệu riêng biệt theo nguyên tắc SOA** |  **100% Đạt** | Tách cơ sở dữ liệu riêng `product_service/products_db.sqlite3` không dùng chung bảng hay file SQLite với Auth Service. |
+| **3. Bảng sản phẩm (`products`) theo Phụ lục**<br>- `id`: INT (PK)<br>- `name`: VARCHAR(255)<br>- `description`: TEXT<br>- `price`: DECIMAL(10, 2)<br>- `quantity`: INT<br>- `created_at`: TIMESTAMP<br>- `updated_at`: TIMESTAMP |  **100% Đạt** | Model `Product` tại [product_service/products/models.py](file:///d:/CODES/Py/Django_Learning/product_service/products/models.py). Đã tạo migration và đăng ký trong Django Admin [product_service/products/admin.py](file:///d:/CODES/Py/Django_Learning/product_service/products/admin.py). |
+| **4. RESTful API `GET /products`** |  **100% Đạt** | Lấy toàn bộ danh sách sản phẩm (hỗ trợ lọc `?search=...`). Triển khai tại `products/views.py`. |
+| **5. RESTful API `GET /products/:id`** |  **100% Đạt** | Lấy chi tiết thông tin một sản phẩm (trả về 404 nếu không tìm thấy). |
+| **6. RESTful API `POST /products`** |  **100% Đạt** | Thêm sản phẩm mới, kiểm tra tính hợp lệ dữ liệu (giá >= 0, số lượng >= 0, tên không rỗng), trả về `201 Created`. |
+| **7. RESTful API `PUT /products/:id`** |  **100% Đạt** | Cập nhật thông tin sản phẩm (hỗ trợ cả `PATCH` cho cập nhật từng phần), tự động cập nhật `updated_at`. |
+| **8. RESTful API `DELETE /products/:id`** |  **100% Đạt** | Xóa sản phẩm khỏi database, trả về phản hồi xác nhận xóa thành công. |
+| **9. Xác thực qua service ở Bài thực hành số 2** |  **100% Đạt** | Lớp xác thực [AuthServiceAuthentication](file:///d:/CODES/Py/Django_Learning/product_service/products/authentication.py) tự động gửi request HTTP sang `http://127.0.0.1:8000/auth` để xác thực token JWT, chặn 401 nếu token không hợp lệ hoặc đã hết hạn. |
+| **10. Swagger UI & Kiểm thử tự động** |  **100% Đạt** | Swagger UI tương tác tại `http://localhost:8001/swagger/`. Bộ 17 bài Unit & Integration Tests đạt 100% tại `product_service/products/tests.py`. |
+
 ---
 
-## 3. KIẾN TRÚC HỆ THỐNG & LUỒNG XỬ LÝ (WORKFLOW)
+## 3. KIẾN TRÚC HỆ THỐNG & LUỒNG XỬ LÝ (WORKFLOW SOA)
 
-### 3.1. Sơ đồ luồng xác thực và bảo vệ API
+### 3.1. Sơ đồ kiến trúc SOA (Kiến trúc hướng dịch vụ 2 Services độc lập)
 ```text
-+---------------------------------------------------------------------------------------+
-|                                    CLIENT (Browser / Postman / Swagger)               |
-+---------------------------------------------------------------------------------------+
-       |                                                |
-  (1) POST / (Login)                               (2) GET /hello (Có kèm Bearer Token)
-  {userName, password (Base64/MD5)}                     |
-       |                                                v
-       v                                       +----------------------------------------+
-+------------------------------------+         |       Django MIDDLEWARE Pipeline       |
-|            ROUTER                  |         +----------------------------------------+
-| (myapi/urls.py -> core/urls.py)    |                     |
-+------------------------------------+                     v
-       |                                       +----------------------------------------+
-       v                                       |     JWTAuthenticationMiddleware        |
-+------------------------------------+         +----------------------------------------+
-|             VIEWS                  |                     |
-|          login_view                |            [Kiểm tra Token hợp lệ?]
-|  - Verify Password (Base64/MD5)    |                     |
-|  - Generate JWT Token              |            +--------+--------+
-|  - Save Token to User.Token        |            |                 |
-+------------------------------------+         (KHÔNG)             (CÓ)
-       |                                          |                 |
-       v                                          v                 v
-+------------------------------------+      +-----------+     +-------------------------+
-|           DATABASE                 |      |  HTTP 401 |     |   Chuyển tiếp tới View  |
-|    Bảng User (db.sqlite3)          |      |  Từ chối  |     |   hello_world -> 200 OK |
-+------------------------------------+      +-----------+     +-------------------------+
++---------------------------------------------------------------------------------------------------+
+|                                 CLIENT (Postman / Browser / Swagger UI)                           |
++---------------------------------------------------------------------------------------------------+
+             |                                                                 |
+    (1) Đăng nhập lấy JWT Token                                       (3) Thao tác CRUD Sản phẩm
+    POST http://localhost:8000/login                                  GET/POST/PUT/DELETE http://localhost:8001/products
+             |                                                                 | (Kèm Header Authorization: Bearer <token>)
+             v                                                                 v
++-------------------------------------------+               +-------------------------------------------+
+|          DỊCH VỤ 1: AUTH SERVICE          |               |        DỊCH VỤ 2: PRODUCT SERVICE         |
+|         (Chạy tại cổng :8000)             |               |           (Chạy tại cổng :8001)           |
+|                                           |  (4) HTTP     |                                           |
+|  - Cấp phát JWT & mã hóa MD5/Base64       |<--------------|  - Controller CRUD Sản phẩm               |
+|  - Middleware bảo vệ /hello               |    POST /auth |  - AuthServiceAuthentication              |
+|  - Endpoint xác thực token: /auth         |    (Xác thực  |  - Giao diện Swagger: :8001/swagger/      |
+|  - Swagger UI: :8000/swagger/             |     liên SV)  |                                           |
++-------------------------------------------+               +-------------------------------------------+
+                     |                                                                 |
+                     v                                                                 v
++-------------------------------------------+               +-------------------------------------------+
+|          DATABASE RIÊNG: db.sqlite3       |               |     DATABASE RIÊNG: products_db.sqlite3   |
+|                 (Bảng User)               |               |              (Bảng products)              |
++-------------------------------------------+               +-------------------------------------------+
 ```
 
-### 3.2. Cơ chế xử lý mật khẩu Client (`verify_password`)
-Nhằm đáp ứng linh hoạt các giao diện Client khác nhau, hệ thống hỗ trợ 3 định dạng mật khẩu:
-1. **Base64 Encoding**: Ví dụ `123456` -> Base64: `MTIzNDU2`. Hệ thống tự động giải mã Base64 trước khi so sánh với mã băm trong DB.
-2. **MD5 Hashing**: Ví dụ `123456` -> MD5: `e10adc3949ba59abbe56e057f20f883e`. Hệ thống so khớp trực tiếp chuỗi hash 32 ký tự.
-3. **Plain Text**: Phục vụ việc kiểm thử nhanh qua cURL hoặc giao diện Swagger.
+### 3.2. Luồng xác thực liên dịch vụ (Inter-Service Authentication)
+1. **Bước 1 (Client -> Auth Service):** Client gửi `POST http://localhost:8000/login` với `userName` và `password` (Base64 hoặc MD5). Auth Service trả về chuỗi `token` JWT.
+2. **Bước 2 (Client -> Product Service):** Client gọi API quản lý sản phẩm `http://localhost:8001/products` kèm Header `Authorization: Bearer <token>`.
+3. **Bước 3 (Product Service -> Auth Service):** Lớp `AuthServiceAuthentication` của Product Service tự động gửi request HTTP `POST http://127.0.0.1:8000/auth` để hỏi Auth Service tính hợp lệ của token.
+4. **Bước 4 (Phản hồi & Thực thi):**
+   - Nếu Auth Service trả về `valid: true`: Product Service thực hiện truy vấn cơ sở dữ liệu `products_db.sqlite3` và trả về kết quả (200 OK / 201 Created).
+   - Nếu Token sai, hết hạn hoặc Auth Service trả về 401: Product Service lập tức từ chối với mã lỗi `401 Unauthorized`.
 
 ---
 
 ## 4. CẤU TRÚC CƠ SỞ DỮ LIỆU (DATABASE SCHEMA)
 
-Dự án sử dụng bảng dữ liệu **`User`** được cấu hình trong `core/models.py`:
+Tuân thủ nguyên tắc kiến trúc SOA, mỗi dịch vụ sở hữu cơ sở dữ liệu hoàn toàn tách biệt:
+
+### 4.1. Bảng `User` (Auth Service - file `db.sqlite3`)
 
 ```python
 class User(models.Model):
@@ -110,19 +130,35 @@ class User(models.Model):
     Token = models.CharField(max_length=255, blank=True, null=True, db_column='Token')
 ```
 
-### Bảng mô tả trường dữ liệu:
-
-| Tên trường (Column) | Kiểu dữ liệu (Data Type) | Thuộc tính / Ràng buộc | Mục đích sử dụng |
+| Tên trường (Column) | Kiểu dữ liệu | Thuộc tính / Ràng buộc | Mục đích sử dụng |
 | :--- | :--- | :--- | :--- |
 | **`IdUser`** | `INTEGER` (`AutoField`) | **PRIMARY KEY**, Auto Increment | Khóa chính định danh duy nhất cho người dùng |
 | **`UserName`** | `VARCHAR(255)` | `UNIQUE`, `NOT NULL` | Tên tài khoản hoặc email đăng nhập |
-| **`Password`** | `VARCHAR(255)` | `NOT NULL` | Mật khẩu (được lưu trữ dưới dạng mã băm MD5 an toàn) |
+| **`Password`** | `VARCHAR(255)` | `NOT NULL` | Mật khẩu (lưu dạng băm MD5) |
 | **`Token`** | `VARCHAR(255)` | `NULLABLE` | Lưu trữ chuỗi JWT mới nhất được cấp phát |
 
-> 💡 **Tối ưu hóa độ dài chuỗi JWT:**  
-> Chuỗi JWT tiêu chuẩn gồm 3 phần: `Header.Payload.Signature`. Để đảm bảo chuỗi JWT không bao giờ vượt quá giới hạn `VARCHAR(255)` của cột `Token`, payload trong `core/utils.py` được tối giản chỉ lưu các trường cốt lõi:
-> `{"id": user.IdUser, "username": user.UserName, "exp": ..., "iat": ...}`.  
-> Chiều dài chuỗi sinh ra luôn ổn định ở mức **~140 - 160 ký tự**, tránh triệt để lỗi tràn cột dữ liệu (Database Data Truncation).
+### 4.2. Bảng `products` (Product Service - file `product_service/products_db.sqlite3`)
+
+```python
+class Product(models.Model):
+    id = models.AutoField(primary_key=True, db_column='id')
+    name = models.CharField(max_length=255, db_column='name')
+    description = models.TextField(blank=True, null=True, db_column='description')
+    price = models.DecimalField(max_digits=10, decimal_places=2, db_column='price')
+    quantity = models.IntegerField(default=0, db_column='quantity')
+    created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
+    updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')
+```
+
+| Tên trường (Column) | Kiểu dữ liệu | Thuộc tính / Ràng buộc | Mục đích sử dụng |
+| :--- | :--- | :--- | :--- |
+| **`id`** | `INT` (`AutoField`) | **PRIMARY KEY**, Auto Increment | ID duy nhất của sản phẩm |
+| **`name`** | `VARCHAR(255)` | `NOT NULL` | Tên sản phẩm |
+| **`description`** | `TEXT` | `NULLABLE` | Mô tả chi tiết về sản phẩm |
+| **`price`** | `DECIMAL(10, 2)` | `NOT NULL`, `>= 0` | Giá bán của sản phẩm |
+| **`quantity`** | `INT` | `DEFAULT 0`, `>= 0` | Số lượng sản phẩm còn lại trong kho |
+| **`created_at`** | `TIMESTAMP` | `auto_now_add=True` | Ngày giờ sản phẩm được tạo |
+| **`updated_at`** | `TIMESTAMP` | `auto_now=True` | Ngày giờ sản phẩm được cập nhật gần nhất |
 
 ---
 
@@ -131,38 +167,53 @@ class User(models.Model):
 ```text
 Django_Learning/
 │
-├── core/                               # Ứng dụng chính xử lý logic API
-│   ├── management/
-│   │   └── commands/
-│   │       └── seed_user.py            # Lệnh tạo tài khoản mẫu kiểm thử nhanh
-│   ├── migrations/
-│   │   └── 0001_initial.py             # File khởi tạo lược đồ bảng User
-│   ├── admin.py                        # Đăng ký quản trị bảng User trong Django Admin
-│   ├── apps.py                         # Khai báo cấu hình ứng dụng Core
-│   ├── middleware.py                   # JWTAuthenticationMiddleware lọc token cho /hello
-│   ├── models.py                       # Model User (IdUser, UserName, Password, Token)
-│   ├── serializers.py                  # Bộ tuần tự hóa dữ liệu cho Login, Auth, Register
-│   ├── tests.py                        # Bộ 9 bài kiểm thử tự động toàn diện
-│   ├── urls.py                         # Tuyến đường API cấp ứng dụng (/api/...)
-│   ├── utils.py                        # Tiện ích: generate_jwt, decode_jwt, verify_password
-│   └── views.py                        # Views: login_view, auth_view, hello_world, register_view
+├── core/                               # SERVICE 1: Ứng dụng Auth (Bài 1 & 2)
+│   ├── management/commands/seed_user.py # Lệnh tạo tài khoản mẫu 'testuser'
+│   ├── migrations/0001_initial.py      # Schema bảng User
+│   ├── admin.py                        # Quản trị User trong Django Admin
+│   ├── middleware.py                   # JWTAuthenticationMiddleware chặn /hello
+│   ├── models.py                       # Model User
+│   ├── serializers.py                  # Serializer Login, Auth, Register
+│   ├── tests.py                        # 9 bài kiểm thử tự động cho Service 1
+│   ├── urls.py                         # Route cấp ứng dụng (/api/...)
+│   ├── utils.py                        # JWT encode/decode, verify_password
+│   └── views.py                        # Views login, auth, hello_world, register
 │
-├── myapi/                              # Cấu hình dự án Django
-│   ├── __init__.py
-│   ├── asgi.py                         # Cấu hình ASGI Server
-│   ├── settings.py                     # Khai báo INSTALLED_APPS, MIDDLEWARE, SPECTACULAR
-│   ├── urls.py                         # Tuyến đường cấp hệ thống (Root routes & Swagger)
-│   └── wsgi.py                         # Cấu hình WSGI Server
+├── myapi/                              # Cấu hình dự án Service 1 (Port 8000)
+│   ├── settings.py                     # DB: db.sqlite3, JWT, Swagger :8000
+│   └── urls.py                         # Root routes & Swagger UI :8000
 │
-├── docs/                               # Thư mục chứa đề bài thực hành
-│   ├── BÀI THỰC HÀNH SỐ 1.pdf          # Đề bài 1: Cài đặt môi trường & Hello World API
-│   └── BÀI THỰC HÀNH SỐ 2.pdf          # Đề bài 2: Router, Middleware & JWT
+├── product_service/                    # SERVICE 2: Quản lý Sản phẩm (Bài 3 - SOA)
+│   ├── manage.py                       # CLI riêng cho Product Service (Port 8001)
+│   ├── products_db.sqlite3             # Database SQLite riêng biệt của Product Service
+│   ├── product_project/                # Cấu hình dự án Service 2
+│   │   ├── settings.py                 # DB riêng, AUTH_SERVICE_URL, Swagger :8001
+│   │   ├── urls.py                     # Định tuyến /products, /swagger :8001
+│   │   ├── asgi.py & wsgi.py
+│   └── products/                       # Ứng dụng Sản phẩm
+│       ├── management/commands/seed_products.py # Lệnh tạo danh sách sản phẩm mẫu
+│       ├── migrations/0001_initial.py  # Schema bảng products
+│       ├── admin.py                    # Quản trị Product trong Django Admin :8001
+│       ├── authentication.py           # Xác thực liên dịch vụ sang Service 1 (:8000/auth)
+│       ├── models.py                   # Model Product theo Phụ lục Bài 3
+│       ├── serializers.py              # Serializer dữ liệu sản phẩm & validation
+│       ├── tests.py                    # 17 bài kiểm thử tự động cho Service 2
+│       ├── urls.py                     # Tuyến đường /products và /products/<id>
+│       └── views.py                    # Controller CRUD: List, Create, Retrieve, Update, Delete
 │
-├── db.sqlite3                          # Cơ sở dữ liệu SQLite cục bộ
-├── manage.py                           # Tập lệnh quản trị Django CLI
-├── requirements.txt                    # Danh sách các gói thư viện phụ thuộc
-├── tutorial.md                         # Ghi chú hướng dẫn bài thực hành số 1
-└── README.md                           # Báo cáo và tài liệu hướng dẫn toàn diện
+├── docs/                               # Tài liệu đề bài gốc
+│   ├── BÀI THỰC HÀNH SỐ 1.pdf
+│   ├── BÀI THỰC HÀNH SỐ 2.pdf
+│   └── BÀI THỰC HÀNH SỐ 3.pdf
+│
+├── run_all_services.bat                # Script chạy đồng thời cả 2 services
+├── run_auth_service.bat                # Script chạy riêng Service 1 (Cổng 8000)
+├── run_product_service.bat             # Script chạy riêng Service 2 (Cổng 8001)
+├── run_tests.bat                       # Script chạy 26 bài test của cả 2 services
+├── db.sqlite3                          # Database của Auth Service
+├── manage.py                           # CLI của Auth Service
+├── requirements.txt                    # Thư viện phụ thuộc (Django, DRF, PyJWT, requests...)
+└── README.md                           # Báo cáo và hướng dẫn toàn diện
 ```
 
 ---
@@ -170,12 +221,13 @@ Django_Learning/
 ## 6. YÊU CẦU MÔI TRƯỜNG & CÔNG NGHỆ SỬ DỤNG
 
 ### Công nghệ nền tảng:
-- **Python:** Phiên bản `>= 3.10`
-- **Django:** Phiên bản `6.1.1` (hoặc các phiên bản `5.x / 6.x`)
-- **Django REST Framework (DRF):** `3.18.1`
-- **PyJWT:** `2.14.0` (Thư viện xử lý JWT)
-- **drf-spectacular:** `0.30.0` (Bộ sinh tài liệu OpenAPI 3.0 & Swagger UI)
-- **SQLite3:** Hệ quản trị cơ sở dữ liệu nhúng
+- **Python:** Phiên bản `>= 3.10` (Khuyên dùng Python 3.11 hoặc 3.12)
+- **Django:** Phiên bản `>= 5.1, < 7.0`
+- **Django REST Framework (DRF):** `>= 3.15.0`
+- **PyJWT:** `>= 2.8.0` (Thư viện xử lý JSON Web Token)
+- **requests:** `>= 2.31.0` (Giao tiếp HTTP giữa các service trong kiến trúc SOA)
+- **drf-spectacular:** `>= 0.27.0` (Bộ sinh tài liệu OpenAPI 3.0 & Swagger UI)
+- **SQLite3:** Hệ quản trị cơ sở dữ liệu nhúng riêng biệt cho từng service
 
 ---
 
@@ -214,35 +266,64 @@ pip install -r requirements.txt
 
 ---
 
-### Bước 3: Đồng bộ Cơ sở dữ liệu (Migration)
-Khởi tạo và cập nhật cấu trúc bảng `User` vào file `db.sqlite3`:
+### Bước 3: Đồng bộ Cơ sở dữ liệu (Migration) cho cả 2 Services
+
+Khởi tạo và cập nhật cấu trúc database riêng cho từng service:
 ```bash
+# 1. Đồng bộ bảng User cho Auth Service
 python manage.py makemigrations
 python manage.py migrate
+
+# 2. Đồng bộ bảng products cho Product Service (Kiến trúc SOA)
+python product_service/manage.py makemigrations
+python product_service/manage.py migrate
 ```
 
 ---
 
-### Bước 4: Tạo tài khoản mẫu để kiểm thử (Seed Data)
-Dự án đã tích hợp sẵn lệnh tạo nhanh tài khoản mẫu:
-```bash
-python manage.py seed_user
-```
-**Thông tin tài khoản mẫu được tạo sẵn:**
-- **Tài khoản (`userName`):** `testuser`
-- **Mật khẩu gốc (Plain text):** `123456`
-- **Mật khẩu Base64:** `MTIzNDU2`
-- **Mật khẩu băm MD5:** `e10adc3949ba59abbe56e057f20f883e`
+### Bước 4: Nạp dữ liệu mẫu để kiểm thử (Seed Data)
 
-*(Tùy chọn: Nếu muốn truy cập trang quản trị `/admin/`, tạo tài khoản Superuser bằng lệnh: `python manage.py createsuperuser`)*
+Dự án tích hợp sẵn 2 câu lệnh tạo nhanh tài khoản và danh sách sản phẩm mẫu:
+
+1. **Tạo tài khoản người dùng mẫu (Auth Service):**
+   ```bash
+   python manage.py seed_user
+   ```
+   - **Tài khoản (`userName`):** `testuser`
+   - **Mật khẩu gốc (Plain text):** `123456`
+   - **Mật khẩu Base64:** `MTIzNDU2`
+   - **Mật khẩu băm MD5:** `e10adc3949ba59abbe56e057f20f883e`
+
+2. **Tạo 5 sản phẩm công nghệ mẫu (Product Service):**
+   ```bash
+   python product_service/manage.py seed_products
+   ```
+   - Tự động nạp các sản phẩm mẫu: Laptop Dell XPS 15, Bàn phím cơ Keychron Q1 Pro, Chuột Logitech MX Master 3S, v.v.
 
 ---
 
-### Bước 5: Khởi động máy chủ phát triển (Development Server)
-```bash
-python manage.py runserver
-```
-Máy chủ sẽ lắng nghe tại địa chỉ: `http://127.0.0.1:8000/` (hoặc `http://localhost:8000/`)
+### Bước 5: Khởi động hệ thống (Chạy cả 2 Services)
+
+Bạn có thể lựa chọn 1 trong 2 cách sau:
+
+- **Cách 1 (Nhanh nhất - Khuyên dùng trên Windows):**
+  Nhấp đúp chuột vào tệp script:
+  ```cmd
+  run_all_services.bat
+  ```
+  Script sẽ tự động mở 2 cửa sổ terminal độc lập:
+  - Cửa sổ 1: Auth Service tại `http://localhost:8000` (Swagger: `http://localhost:8000/swagger/`)
+  - Cửa sổ 2: Product Service tại `http://localhost:8001` (Swagger: `http://localhost:8001/swagger/`)
+
+- **Cách 2: Khởi động thủ công qua lệnh Terminal riêng biệt:**
+  - **Terminal 1 (Auth Service - Cổng 8000):**
+    ```bash
+    python manage.py runserver 8000
+    ```
+  - **Terminal 2 (Product Service - Cổng 8001):**
+    ```bash
+    python product_service/manage.py runserver 8001
+    ```
 
 ---
 
@@ -250,15 +331,30 @@ Máy chủ sẽ lắng nghe tại địa chỉ: `http://127.0.0.1:8000/` (hoặc
 
 ### Danh sách Endpoint tổng quan:
 
-| Nhóm chức năng | Phương thức | Đường dẫn (URL) | Mô tả tóm tắt | Quyền truy cập |
+#### A. DỊCH VỤ 1: AUTHENTICATION SERVICE (`http://localhost:8000`)
+| Chức năng | Phương thức | Đường dẫn (URL) | Mô tả tóm tắt | Quyền truy cập |
 | :--- | :---: | :--- | :--- | :---: |
 | **Login** | `POST` | `/` hoặc `/login` | Đăng nhập và cấp phát chuỗi JWT | Public |
 | **Auth** | `GET` / `POST` | `/auth` | Xác thực tính hợp lệ của Token | Public |
-| **Hello World** | `GET` | `/hello` hoặc `/api/hello/` | API Bài 1 in dòng `hello-world` |  **Cần Bearer Token** |
+| **Hello World** | `GET` | `/hello` hoặc `/api/hello/` | API in dòng `hello-world` |  **Cần Bearer Token** |
 | **Register** | `POST` | `/register` | Đăng ký tài khoản người dùng mới | Public |
-| **Swagger UI** | `GET` | `/swagger/` hoặc `/docs/` | Giao diện tài liệu API trực quan | Public |
+| **Swagger UI** | `GET` | `/swagger/` hoặc `/docs/` | Giao diện tài liệu Swagger Service 1 | Public |
 | **OpenAPI Schema** | `GET` | `/api/schema/` | Tải về cấu hình JSON/YAML OpenAPI | Public |
-| **Django Admin** | `GET` | `/admin/` | Trang quản trị dữ liệu hệ thống | Cần tài khoản Admin |
+| **Django Admin** | `GET` | `/admin/` | Trang quản trị dữ liệu User | Cần Superuser |
+
+#### B. DỊCH VỤ 2: PRODUCT MANAGEMENT SERVICE (`http://localhost:8001`)
+| Chức năng | Phương thức | Đường dẫn (URL) | Mô tả tóm tắt | Quyền truy cập |
+| :--- | :---: | :--- | :--- | :---: |
+| **Thông tin Service** | `GET` | `/` | Trạng thái và danh mục API Product | Public |
+| **Danh sách sản phẩm** | `GET` | `/products` | Lấy danh sách sản phẩm (hỗ trợ `?search=`) |  **Cần Bearer Token (Auth Service)** |
+| **Thêm mới sản phẩm** | `POST` | `/products` | Thêm một sản phẩm mới vào database |  **Cần Bearer Token (Auth Service)** |
+| **Chi tiết sản phẩm** | `GET` | `/products/<id>` | Xem chi tiết sản phẩm theo ID |  **Cần Bearer Token (Auth Service)** |
+| **Cập nhật sản phẩm** | `PUT` | `/products/<id>` | Cập nhật toàn bộ thông tin sản phẩm |  **Cần Bearer Token (Auth Service)** |
+| **Cập nhật từng phần**| `PATCH`| `/products/<id>` | Cập nhật một số trường của sản phẩm |  **Cần Bearer Token (Auth Service)** |
+| **Xóa sản phẩm** | `DELETE` | `/products/<id>` | Xóa sản phẩm khỏi database |  **Cần Bearer Token (Auth Service)** |
+| **Swagger UI** | `GET` | `/swagger/` hoặc `/docs/` | Giao diện tài liệu Swagger Service 2 | Public |
+| **OpenAPI Schema** | `GET` | `/api/schema/` | Tải về cấu hình OpenAPI Service 2 | Public |
+| **Django Admin** | `GET` | `/admin/` | Trang quản trị dữ liệu Products | Cần Superuser |
 
 ---
 
@@ -407,77 +503,232 @@ Máy chủ sẽ lắng nghe tại địa chỉ: `http://127.0.0.1:8000/` (hoặc
 
 ---
 
-## 9. HƯỚNG DẪN KIỂM THỬ VỚI POSTMAN & SWAGGER UI
-
-### 9.1. Kiểm thử trực quan trên Swagger UI
-1. Mở trình duyệt web và truy cập: **`http://localhost:8000/swagger/`**
-2. Tìm đến mục **`POST /` (Dịch vụ Đăng nhập)**:
-   - Nhấn **Try it out**.
-   - Nhập thông tin đăng nhập: `userName: testuser`, `password: MTIzNDU2`.
-   - Bấm **Execute**.
-   - Copy toàn bộ chuỗi token nằm trong trường `"token": "..."` ở phần kết quả trả về.
-3. Kéo lên đầu trang Swagger, nhấn vào nút **Authorize 🔓** (có biểu tượng ổ khóa màu xanh lá cây):
-   - Nhập vào ô Value: chuỗi token vừa copy (Swagger tự động hỗ trợ định dạng Bearer).
-   - Nhấn **Authorize** rồi nhấn **Close**.
-4. Tìm đến mục **`GET /hello` (API Hello World)**:
-   - Nhấn **Try it out** -> **Execute**.
-   - Quan sát kết quả: Hệ thống trả về `200 OK` cùng chuỗi `{"message": "hello-world"}`.
-   - Thử nhấn **Logout** ở nút Authorize rồi gọi lại `/hello` để thấy Middleware chặn lại với mã lỗi `401 Unauthorized`.
+#### 8.5. API Danh sách Sản phẩm (GET /products)
+- **Phương thức:** `GET`
+- **Đường dẫn:** `http://localhost:8001/products` (hoặc `http://localhost:8001/products/`)
+- **Yêu cầu:** Header `Authorization: Bearer <token>` (Lấy từ Auth Service)
+- **Tham số tùy chọn:** `?search=<từ_khóa>` để lọc theo tên sản phẩm.
+- **Phản hồi thành công (`200 OK`):**
+  ```json
+  {
+    "message": "Lấy danh sách sản phẩm thành công.",
+    "total": 5,
+    "authenticated_user": {
+      "id": 1,
+      "username": "testuser"
+    },
+    "data": [
+      {
+        "id": 1,
+        "name": "Laptop Dell XPS 15 9530",
+        "description": "Intel Core i7-13700H, 16GB RAM, 512GB SSD...",
+        "price": "42500000.00",
+        "quantity": 10,
+        "created_at": "2026-10-18T04:00:00Z",
+        "updated_at": "2026-10-18T04:00:00Z"
+      }
+    ]
+  }
+  ```
 
 ---
 
-### 9.2. Kiểm thử trên Postman
-1. **Request 1 - Đăng nhập:**
-   - Method: `POST` | URL: `http://localhost:8000/login`
-   - Body -> chọn `raw` -> `JSON`:
-     ```json
-     {
-       "userName": "testuser",
-       "password": "MTIzNDU2"
-     }
-     ```
-   - Gửi request và sao chép chuỗi `token`.
-2. **Request 2 - Xác thực Token:**
-   - Method: `GET` | URL: `http://localhost:8000/auth`
-   - Headers: Thêm Key `Authorization`, Value: `Bearer <chuỗi_token>`.
-3. **Request 3 - Gọi API Hello World:**
-   - Method: `GET` | URL: `http://localhost:8000/hello`
-   - Tab **Authorization**: Chọn Type là `Bearer Token`, dán mã token vào ô Token.
-   - Nhấn **Send** -> Kết quả hiển thị `"message": "hello-world"`.
+#### 8.6. API Thêm mới Sản phẩm (POST /products)
+- **Phương thức:** `POST`
+- **Đường dẫn:** `http://localhost:8001/products`
+- **Yêu cầu:** Header `Authorization: Bearer <token>`
+- **Body JSON:**
+  ```json
+  {
+    "name": "Bàn phím cơ không dây Keychron K2 Pro",
+    "description": "Bàn phím cơ Bluetooth layout 75%, hot-swap switch Gateron.",
+    "price": "1850000.00",
+    "quantity": 25
+  }
+  ```
+- **Phản hồi thành công (`201 Created`):**
+  ```json
+  {
+    "message": "Thêm mới sản phẩm thành công.",
+    "authenticated_user": {
+      "id": 1,
+      "username": "testuser"
+    },
+    "data": {
+      "id": 6,
+      "name": "Bàn phím cơ không dây Keychron K2 Pro",
+      "description": "Bàn phím cơ Bluetooth layout 75%, hot-swap switch Gateron.",
+      "price": "1850000.00",
+      "quantity": 25,
+      "created_at": "2026-10-18T04:15:00Z",
+      "updated_at": "2026-10-18T04:15:00Z"
+    }
+  }
+  ```
+
+---
+
+#### 8.7. API Chi tiết Sản phẩm theo ID (GET /products/:id)
+- **Phương thức:** `GET`
+- **Đường dẫn:** `http://localhost:8001/products/1`
+- **Yêu cầu:** Header `Authorization: Bearer <token>`
+- **Phản hồi thành công (`200 OK`):**
+  ```json
+  {
+    "message": "Lấy thông tin chi tiết sản phẩm thành công.",
+    "data": {
+      "id": 1,
+      "name": "Laptop Dell XPS 15 9530",
+      "description": "Intel Core i7-13700H, 16GB RAM, 512GB SSD...",
+      "price": "42500000.00",
+      "quantity": 10,
+      "created_at": "2026-10-18T04:00:00Z",
+      "updated_at": "2026-10-18T04:00:00Z"
+    }
+  }
+  ```
+- **Phản hồi khi không tìm thấy (`404 Not Found`):**
+  ```json
+  {
+    "error": "Not Found",
+    "detail": "Không tìm thấy sản phẩm có ID = 999."
+  }
+  ```
+
+---
+
+#### 8.8. API Cập nhật Sản phẩm (PUT & PATCH /products/:id)
+- **Phương thức:** `PUT` (Cập nhật toàn bộ) hoặc `PATCH` (Cập nhật một phần)
+- **Đường dẫn:** `http://localhost:8001/products/1`
+- **Yêu cầu:** Header `Authorization: Bearer <token>`
+- **Body JSON mẫu:**
+  ```json
+  {
+    "price": "41000000.00",
+    "quantity": 8
+  }
+  ```
+- **Phản hồi thành công (`200 OK`):**
+  ```json
+  {
+    "message": "Cập nhật thông tin sản phẩm ID = 1 thành công.",
+    "data": {
+      "id": 1,
+      "name": "Laptop Dell XPS 15 9530",
+      "price": "41000000.00",
+      "quantity": 8,
+      "updated_at": "2026-10-18T04:20:00Z"
+    }
+  }
+  ```
+
+---
+
+#### 8.9. API Xóa Sản phẩm (DELETE /products/:id)
+- **Phương thức:** `DELETE`
+- **Đường dẫn:** `http://localhost:8001/products/1`
+- **Yêu cầu:** Header `Authorization: Bearer <token>`
+- **Phản hồi thành công (`200 OK`):**
+  ```json
+  {
+    "message": "Đã xóa thành công sản phẩm 'Laptop Dell XPS 15 9530' (ID = 1).",
+    "deleted_id": 1
+  }
+  ```
+
+---
+
+## 9. HƯỚNG DẪN KIỂM THỬ VỚI POSTMAN & SWAGGER UI
+
+### 9.1. Kiểm thử trực quan trên Swagger UI
+
+Hệ thống cung cấp **2 giao diện Swagger UI riêng biệt** cho 2 dịch vụ độc lập:
+1. **Auth Service Swagger:** `http://localhost:8000/swagger/`
+2. **Product Service Swagger:** `http://localhost:8001/swagger/`
+
+#### Các bước thực hiện:
+1. Truy cập Swagger của Auth Service tại `http://localhost:8000/swagger/`.
+2. Mở endpoint `POST /` (Login), nhấn **Try it out**, nhập tài khoản `testuser` và mật khẩu `MTIzNDU2`, bấm **Execute** và sao chép mã `token` được trả về.
+3. Mở Swagger của Product Service tại `http://localhost:8001/swagger/`.
+4. Bấm vào nút **Authorize 🔓** ở góc phải trên cùng của trang:
+   - Dán chuỗi `token` vừa sao chép vào ô Value.
+   - Nhấn **Authorize** rồi nhấn **Close**.
+5. Bây giờ bạn có thể trải nghiệm toàn bộ các thao tác:
+   - `GET /products`: Lấy danh sách sản phẩm.
+   - `POST /products`: Thêm mới sản phẩm.
+   - `GET /products/{pk}`: Lấy chi tiết.
+   - `PUT /products/{pk}`: Chỉnh sửa giá hoặc số lượng.
+   - `DELETE /products/{pk}`: Xóa sản phẩm.
+6. Thử bấm **Logout** trong nút Authorize và gọi lại một API bất kỳ để quan sát hệ thống từ chối với mã lỗi `401 Unauthorized`!
+
+---
+
+### 9.2. Kiểm thử luồng SOA hoàn chỉnh trên Postman
+1. **Bước 1 (Auth):** Gửi `POST http://localhost:8000/login` với body:
+   ```json
+   { "userName": "testuser", "password": "MTIzNDU2" }
+   ```
+   Lấy chuỗi `token` trong phản hồi.
+2. **Bước 2 (Product Service):** Tạo request mới:
+   - URL: `http://localhost:8001/products`
+   - Tab **Authorization**: Chọn type **Bearer Token**, dán chuỗi token vào.
+   - Thử nghiệm gửi request không có token để thấy lỗi 401.
+   - Gửi kèm token để thấy danh sách toàn bộ sản phẩm 200 OK.
 
 ---
 
 ## 10. KIỂM THỬ TỰ ĐỘNG (AUTOMATED UNIT TESTS)
 
-Dự án được xây dựng kèm bộ test tự động độc lập tại file [core/tests.py](file:///d:/CODES/Py/Django_Learning/core/tests.py) sử dụng `APITestCase` của Django REST Framework.
+Dự án trang bị bộ kiểm thử tự động toàn diện với **tổng cộng 26 bài test độc lập**:
+- **Service 1 (Auth Service):** 9 bài test tại [core/tests.py](file:///d:/CODES/Py/Django_Learning/core/tests.py)
+- **Service 2 (Product Service):** 17 bài test tại [product_service/products/tests.py](file:///d:/CODES/Py/Django_Learning/product_service/products/tests.py)
 
-### Lệnh chạy toàn bộ test:
-```powershell
-python manage.py test
-```
+### Chạy toàn bộ 26 tests chỉ với 1 thao tác:
+- **Trên Windows:** Nhấp đúp vào tệp script:
+  ```cmd
+  run_tests.bat
+  ```
+- **Hoặc chạy qua dòng lệnh:**
+  ```powershell
+  python manage.py test core
+  python product_service/manage.py test products
+  ```
 
-### Kết quả chạy kiểm thử thực tế:
+### Kết quả chạy kiểm thử thực tế (100% Passed):
 ```text
-Creating test database for alias 'default'...
-System check identified no issues (0 silenced).
+[1/2] Kiem thu Service 1 (Auth Service)...
 .........
-----------------------------------------------------------------------
-Ran 9 tests in 2.400s
-
+Ran 9 tests in 3.922s
 OK
-Destroying test database for alias 'default'...
+
+[2/2] Kiem thu Service 2 (Product Service)...
+.................
+Ran 17 tests in 0.316s
+OK
+
+========================================================
+  [THANH CONG] TAT CA CAC BAI KIEM THU DA VUOT QUA (OK)
+========================================================
 ```
 
-### Chi tiết 9 trường hợp kiểm thử (Test Cases):
-1. `test_01_login_with_base64_password`: Xác minh đăng nhập thành công với mật khẩu mã hóa Base64 và kiểm tra việc lưu chuỗi token vào cột `Token` trong database.
-2. `test_02_login_with_md5_password`: Xác minh đăng nhập thành công khi client gửi mật khẩu dạng băm MD5.
-3. `test_03_login_with_plain_password`: Xác minh đăng nhập bằng mật khẩu văn bản thô.
-4. `test_04_login_wrong_password`: Xác minh hệ thống từ chối và trả về mã lỗi `401 Unauthorized` khi nhập sai mật khẩu.
-5. `test_05_auth_token_endpoint`: Kiểm tra API `/auth` giải mã và xác nhận tính hợp lệ của token qua cả Header Authorization và POST body.
-6. `test_06_middleware_blocks_hello_world_without_token`: Kiểm tra Middleware chặn request truy cập `/hello` khi không có token (trả về mã 401).
-7. `test_07_middleware_blocks_hello_world_with_invalid_token`: Kiểm tra Middleware chặn request truy cập `/hello` khi token giả mạo hoặc sai định dạng.
-8. `test_08_middleware_allows_hello_world_with_valid_token`: Kiểm tra Middleware cho phép truy cập `/hello` khi cung cấp token JWT hợp lệ.
-9. `test_09_register_endpoint`: Kiểm tra quy trình đăng ký tài khoản mới và lưu mật khẩu dạng băm an toàn vào cơ sở dữ liệu.
+### Danh mục 17 bài test của Service 2 (Product Service):
+1. `test_get_products_without_token_returns_401`: Chặn 401 khi không có token.
+2. `test_get_products_with_invalid_token_returns_401`: Chặn 401 khi token giả mạo.
+3. `test_get_products_with_expired_token_returns_401`: Chặn 401 khi token đã hết hạn.
+4. `test_get_all_products_success`: Lấy danh sách sản phẩm thành công với 200 OK.
+5. `test_create_product_success`: Tạo mới sản phẩm thành công với 201 Created.
+6. `test_create_product_invalid_price_returns_400`: Chặn 400 khi giá sản phẩm là số âm.
+7. `test_create_product_invalid_quantity_returns_400`: Chặn 400 khi số lượng là số âm.
+8. `test_create_product_empty_name_returns_400`: Chặn 400 khi tên sản phẩm để trống.
+9. `test_get_product_detail_success`: Lấy chi tiết thông tin sản phẩm thành công.
+10. `test_get_product_detail_not_found_returns_404`: Trả về 404 khi ID sản phẩm không tồn tại.
+11. `test_update_product_put_success`: Cập nhật toàn bộ thông tin sản phẩm thành công.
+12. `test_update_product_patch_success`: Cập nhật từng phần thông tin sản phẩm thành công.
+13. `test_delete_product_success`: Xóa sản phẩm khỏi database thành công.
+14. `test_delete_product_not_found_returns_404`: Trả về 404 khi xóa sản phẩm không tồn tại.
+15. `test_auth_service_http_integration_success`: Kiểm thử gọi HTTP xác thực thành công sang Auth Service.
+16. `test_auth_service_http_integration_unauthorized`: Kiểm thử xử lý khi Auth Service từ chối xác thực.
+17. `test_offline_fallback_jwt_verification`: Kiểm thử cơ chế giải mã JWT dự phòng nội bộ khi Auth Service offline.
 
 ---
 
@@ -512,4 +763,4 @@ Destroying test database for alias 'default'...
 
 - **Đơn vị đào tạo:** Bộ môn Mạng máy tính & Truyền thông / Kỹ thuật Phần mềm
 - **Môn học:** Phát triển Ứng dụng Phân tán & Web Services (RESTful API)
-- **Tài liệu tham chiếu:** [BÀI THỰC HÀNH SỐ 1.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%201.pdf) và [BÀI THỰC HÀNH SỐ 2.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%202.pdf)
+- **Tài liệu tham chiếu:** [BÀI THỰC HÀNH SỐ 1.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%201.pdf), [BÀI THỰC HÀNH SỐ 2.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%202.pdf) và [BÀI THỰC HÀNH SỐ 3.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%203.pdf)
