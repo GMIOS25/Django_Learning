@@ -1,0 +1,1369 @@
+openapi: 3.0.3
+info:
+  title: Order Management Service (SOA - Bài Thực Hành Số 4)
+  version: 1.0.0
+  description: |-
+    Dịch vụ quản lý đơn hàng hoạt động độc lập trên cổng 8002 và cơ sở dữ liệu riêng (orders_db.sqlite3).
+    - Xác thực người dùng thông qua Auth Service đã xây dựng ở Bài thực hành số 2 (cổng 8000).
+    - Tương tác liên dịch vụ (Inter-Service) kiểm tra tồn kho từ Product Service (cổng 8001).
+paths:
+  /api/order_items/:
+    get:
+      operationId: api_order_items_retrieve
+      description: |-
+        **Yêu cầu xác thực qua Auth Service (Bài 2)**: Header `Authorization: Bearer <token>`.
+
+        - **GET /order_items**: Lấy danh sách tất cả các mặt hàng (hỗ trợ lọc `?order_id=<id>`).
+        - **POST /order_items**: Tạo mặt hàng mới trong đơn hàng, tự động kiểm tra tồn kho từ Product Service và cập nhật lại `total_amount` của đơn hàng.
+      summary: 3. Lấy danh sách hoặc Thêm mới mặt hàng trong đơn hàng
+      parameters:
+      - in: query
+        name: order_id
+        schema:
+          type: integer
+        description: Lọc danh sách mặt hàng thuộc về một đơn hàng cụ thể
+      tags:
+      - api
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderItemListResponse'
+          description: Lấy danh sách mặt hàng thành công
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ.
+    post:
+      operationId: api_order_items_create
+      description: |-
+        Controller xử lý:
+        - GET /order_items: Lấy danh sách tất cả mặt hàng trong đơn hàng
+        - POST /order_items: Tạo mặt hàng mới (kiểm tra tồn kho qua Product Service)
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderItemCreateRequest'
+            examples:
+              VíDụThêmMộtMặtHàngVàoĐơnHàng:
+                value:
+                  order_id: 1
+                  product_id: 3
+                  quantity: 2
+                summary: Ví dụ thêm một mặt hàng vào đơn hàng
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderItemCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrderItemCreateRequest'
+        required: true
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderItemResponse'
+              examples:
+                VíDụThêmMộtMặtHàngVàoĐơnHàng:
+                  value:
+                    order_id: 1
+                    product_id: 3
+                    quantity: 2
+                  summary: Ví dụ thêm một mặt hàng vào đơn hàng
+          description: Tạo mặt hàng mới thành công
+        '400':
+          description: Dữ liệu mặt hàng không hợp lệ hoặc sản phẩm không đủ tồn kho.
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ.
+  /api/order_items/{id}/:
+    get:
+      operationId: api_order_items_retrieve_2
+      description: |-
+        **Yêu cầu xác thực qua Auth Service (Bài 2)**: Header `Authorization: Bearer <token>`.
+
+        - **GET /order_items/<id>**: Lấy thông tin chi tiết một mặt hàng.
+        - **PUT/PATCH /order_items/<id>**: Cập nhật mặt hàng (tự động tính lại tổng tiền đơn hàng).
+        - **DELETE /order_items/<id>**: Xóa một mặt hàng khỏi đơn hàng (tự động tính lại tổng tiền đơn hàng).
+      summary: 4. Chi tiết, Cập nhật và Xóa một mặt hàng theo ID
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        description: ID duy nhất của chi tiết đơn hàng
+        required: true
+      tags:
+      - api
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderItemResponse'
+          description: Lấy chi tiết mặt hàng thành công
+        '404':
+          description: Không tìm thấy mặt hàng với ID cung cấp.
+        '401':
+          description: Chưa xác thực qua Auth Service.
+    put:
+      operationId: api_order_items_update
+      description: |-
+        Controller xử lý:
+        - GET /order_items/<id>: Lấy thông tin chi tiết một mặt hàng
+        - PUT/PATCH /order_items/<id>: Cập nhật mặt hàng
+        - DELETE /order_items/<id>: Xóa một mặt hàng trong đơn hàng
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderItemUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderItemUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrderItemUpdateRequest'
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderItemResponse'
+          description: Cập nhật mặt hàng thành công
+        '400':
+          description: Dữ liệu cập nhật không hợp lệ.
+        '404':
+          description: Không tìm thấy mặt hàng cần cập nhật.
+        '401':
+          description: Chưa xác thực qua Auth Service.
+    patch:
+      operationId: api_order_items_partial_update
+      description: |-
+        Controller xử lý:
+        - GET /order_items/<id>: Lấy thông tin chi tiết một mặt hàng
+        - PUT/PATCH /order_items/<id>: Cập nhật mặt hàng
+        - DELETE /order_items/<id>: Xóa một mặt hàng trong đơn hàng
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOrderItemUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOrderItemUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOrderItemUpdateRequest'
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderItemResponse'
+          description: Cập nhật mặt hàng thành công
+        '400':
+          description: Dữ liệu cập nhật không hợp lệ.
+        '404':
+          description: Không tìm thấy mặt hàng cần cập nhật.
+        '401':
+          description: Chưa xác thực qua Auth Service.
+    delete:
+      operationId: api_order_items_destroy
+      description: |-
+        Controller xử lý:
+        - GET /order_items/<id>: Lấy thông tin chi tiết một mặt hàng
+        - PUT/PATCH /order_items/<id>: Cập nhật mặt hàng
+        - DELETE /order_items/<id>: Xóa một mặt hàng trong đơn hàng
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - api
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Xóa mặt hàng khỏi đơn hàng thành công
+        '404':
+          description: Không tìm thấy mặt hàng cần xóa.
+        '401':
+          description: Chưa xác thực qua Auth Service.
+  /api/orders/:
+    get:
+      operationId: api_orders_retrieve
+      description: |-
+        **Yêu cầu xác thực qua Auth Service (Bài 2)**: Header `Authorization: Bearer <token>`.
+
+        - **GET /orders**: Lấy danh sách tất cả các đơn hàng (hỗ trợ lọc `?status=pending|completed|cancelled` và `?search=...`).
+        - **POST /orders**: Tạo đơn hàng mới. Tự động liên lạc sang **Product Service** (cổng 8001) để kiểm tra tồn kho và đơn giá sản phẩm.
+      summary: 1. Lấy danh sách hoặc Tạo mới đơn hàng
+      parameters:
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Tìm kiếm theo tên khách hàng hoặc email
+      - in: query
+        name: status
+        schema:
+          type: string
+        description: Lọc theo trạng thái đơn hàng (pending, completed, cancelled)
+      tags:
+      - api
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderListResponse'
+          description: Lấy danh sách đơn hàng thành công
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ.
+    post:
+      operationId: api_orders_create
+      description: |-
+        Controller xử lý:
+        - GET /orders: Lấy danh sách tất cả đơn hàng
+        - POST /orders: Tạo đơn hàng mới (kiểm tra tồn kho qua Product Service)
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreateRequest'
+            examples:
+              VíDụTạoĐơnHàngKèmDanhSáchSảnPhẩm:
+                value:
+                  customer_name: Nguyễn Văn An
+                  customer_email: an.nguyen@example.com
+                  status: pending
+                  items:
+                  - product_id: 1
+                    quantity: 2
+                  - product_id: 2
+                    quantity: 1
+                summary: Ví dụ tạo đơn hàng kèm danh sách sản phẩm
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrderCreateRequest'
+        required: true
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+              examples:
+                VíDụTạoĐơnHàngKèmDanhSáchSảnPhẩm:
+                  value:
+                    customer_name: Nguyễn Văn An
+                    customer_email: an.nguyen@example.com
+                    status: pending
+                    items:
+                    - product_id: 1
+                      quantity: 2
+                    - product_id: 2
+                      quantity: 1
+                  summary: Ví dụ tạo đơn hàng kèm danh sách sản phẩm
+          description: Tạo đơn hàng thành công
+        '400':
+          description: Dữ liệu không hợp lệ hoặc sản phẩm không đủ tồn kho.
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ.
+  /api/orders/{id}/:
+    get:
+      operationId: api_orders_retrieve_2
+      description: |-
+        **Yêu cầu xác thực qua Auth Service (Bài 2)**: Header `Authorization: Bearer <token>`.
+
+        - **GET /orders/<id>**: Lấy thông tin chi tiết một đơn hàng cùng các mặt hàng bên trong.
+        - **PUT /orders/<id>** hoặc **PATCH**: Cập nhật trạng thái đơn hàng (pending, completed, cancelled) hoặc thông tin khách hàng.
+        - **DELETE /orders/<id>**: Xóa một đơn hàng khỏi hệ thống.
+      summary: 2. Chi tiết, Cập nhật trạng thái và Xóa đơn hàng theo ID
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        description: ID duy nhất của đơn hàng
+        required: true
+      tags:
+      - api
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+          description: Lấy chi tiết đơn hàng thành công
+        '404':
+          description: Không tìm thấy đơn hàng với ID cung cấp.
+        '401':
+          description: Chưa xác thực qua Auth Service.
+    put:
+      operationId: api_orders_update
+      description: |-
+        Controller xử lý:
+        - GET /orders/<id>: Chi tiết đơn hàng
+        - PUT/PATCH /orders/<id>: Cập nhật trạng thái đơn hàng
+        - DELETE /orders/<id>: Xóa đơn hàng
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderUpdateRequest'
+            examples:
+              VíDụCậpNhậtTrạngTháiĐơnHàngSangCompleted:
+                value:
+                  status: completed
+                summary: Ví dụ cập nhật trạng thái đơn hàng sang completed
+              VíDụHủyĐơnHàng:
+                value:
+                  status: cancelled
+                summary: Ví dụ hủy đơn hàng
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrderUpdateRequest'
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+              examples:
+                VíDụCậpNhậtTrạngTháiĐơnHàngSangCompleted:
+                  value:
+                    status: completed
+                  summary: Ví dụ cập nhật trạng thái đơn hàng sang completed
+                VíDụHủyĐơnHàng:
+                  value:
+                    status: cancelled
+                  summary: Ví dụ hủy đơn hàng
+          description: Cập nhật đơn hàng thành công
+        '400':
+          description: Dữ liệu cập nhật không hợp lệ.
+        '404':
+          description: Không tìm thấy đơn hàng cần cập nhật.
+        '401':
+          description: Chưa xác thực qua Auth Service.
+    patch:
+      operationId: api_orders_partial_update
+      description: |-
+        Controller xử lý:
+        - GET /orders/<id>: Chi tiết đơn hàng
+        - PUT/PATCH /orders/<id>: Cập nhật trạng thái đơn hàng
+        - DELETE /orders/<id>: Xóa đơn hàng
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOrderUpdateRequest'
+            examples:
+              VíDụCậpNhậtTrạngTháiĐơnHàngSangCompleted:
+                value:
+                  status: completed
+                summary: Ví dụ cập nhật trạng thái đơn hàng sang completed
+              VíDụHủyĐơnHàng:
+                value:
+                  status: cancelled
+                summary: Ví dụ hủy đơn hàng
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOrderUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOrderUpdateRequest'
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+              examples:
+                VíDụCậpNhậtTrạngTháiĐơnHàngSangCompleted:
+                  value:
+                    status: completed
+                  summary: Ví dụ cập nhật trạng thái đơn hàng sang completed
+                VíDụHủyĐơnHàng:
+                  value:
+                    status: cancelled
+                  summary: Ví dụ hủy đơn hàng
+          description: Cập nhật đơn hàng thành công
+        '400':
+          description: Dữ liệu cập nhật không hợp lệ.
+        '404':
+          description: Không tìm thấy đơn hàng cần cập nhật.
+        '401':
+          description: Chưa xác thực qua Auth Service.
+    delete:
+      operationId: api_orders_destroy
+      description: |-
+        Controller xử lý:
+        - GET /orders/<id>: Chi tiết đơn hàng
+        - PUT/PATCH /orders/<id>: Cập nhật trạng thái đơn hàng
+        - DELETE /orders/<id>: Xóa đơn hàng
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - api
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Xóa đơn hàng thành công
+        '404':
+          description: Không tìm thấy đơn hàng cần xóa.
+        '401':
+          description: Chưa xác thực qua Auth Service.
+  /order_items/:
+    get:
+      operationId: order_items_retrieve
+      description: |-
+        **Yêu cầu xác thực qua Auth Service (Bài 2)**: Header `Authorization: Bearer <token>`.
+
+        - **GET /order_items**: Lấy danh sách tất cả các mặt hàng (hỗ trợ lọc `?order_id=<id>`).
+        - **POST /order_items**: Tạo mặt hàng mới trong đơn hàng, tự động kiểm tra tồn kho từ Product Service và cập nhật lại `total_amount` của đơn hàng.
+      summary: 3. Lấy danh sách hoặc Thêm mới mặt hàng trong đơn hàng
+      parameters:
+      - in: query
+        name: order_id
+        schema:
+          type: integer
+        description: Lọc danh sách mặt hàng thuộc về một đơn hàng cụ thể
+      tags:
+      - order_items
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderItemListResponse'
+          description: Lấy danh sách mặt hàng thành công
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ.
+    post:
+      operationId: order_items_create
+      description: |-
+        Controller xử lý:
+        - GET /order_items: Lấy danh sách tất cả mặt hàng trong đơn hàng
+        - POST /order_items: Tạo mặt hàng mới (kiểm tra tồn kho qua Product Service)
+      tags:
+      - order_items
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderItemCreateRequest'
+            examples:
+              VíDụThêmMộtMặtHàngVàoĐơnHàng:
+                value:
+                  order_id: 1
+                  product_id: 3
+                  quantity: 2
+                summary: Ví dụ thêm một mặt hàng vào đơn hàng
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderItemCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrderItemCreateRequest'
+        required: true
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderItemResponse'
+              examples:
+                VíDụThêmMộtMặtHàngVàoĐơnHàng:
+                  value:
+                    order_id: 1
+                    product_id: 3
+                    quantity: 2
+                  summary: Ví dụ thêm một mặt hàng vào đơn hàng
+          description: Tạo mặt hàng mới thành công
+        '400':
+          description: Dữ liệu mặt hàng không hợp lệ hoặc sản phẩm không đủ tồn kho.
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ.
+  /order_items/{id}/:
+    get:
+      operationId: order_items_retrieve_2
+      description: |-
+        **Yêu cầu xác thực qua Auth Service (Bài 2)**: Header `Authorization: Bearer <token>`.
+
+        - **GET /order_items/<id>**: Lấy thông tin chi tiết một mặt hàng.
+        - **PUT/PATCH /order_items/<id>**: Cập nhật mặt hàng (tự động tính lại tổng tiền đơn hàng).
+        - **DELETE /order_items/<id>**: Xóa một mặt hàng khỏi đơn hàng (tự động tính lại tổng tiền đơn hàng).
+      summary: 4. Chi tiết, Cập nhật và Xóa một mặt hàng theo ID
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        description: ID duy nhất của chi tiết đơn hàng
+        required: true
+      tags:
+      - order_items
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderItemResponse'
+          description: Lấy chi tiết mặt hàng thành công
+        '404':
+          description: Không tìm thấy mặt hàng với ID cung cấp.
+        '401':
+          description: Chưa xác thực qua Auth Service.
+    put:
+      operationId: order_items_update
+      description: |-
+        Controller xử lý:
+        - GET /order_items/<id>: Lấy thông tin chi tiết một mặt hàng
+        - PUT/PATCH /order_items/<id>: Cập nhật mặt hàng
+        - DELETE /order_items/<id>: Xóa một mặt hàng trong đơn hàng
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - order_items
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderItemUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderItemUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrderItemUpdateRequest'
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderItemResponse'
+          description: Cập nhật mặt hàng thành công
+        '400':
+          description: Dữ liệu cập nhật không hợp lệ.
+        '404':
+          description: Không tìm thấy mặt hàng cần cập nhật.
+        '401':
+          description: Chưa xác thực qua Auth Service.
+    patch:
+      operationId: order_items_partial_update
+      description: |-
+        Controller xử lý:
+        - GET /order_items/<id>: Lấy thông tin chi tiết một mặt hàng
+        - PUT/PATCH /order_items/<id>: Cập nhật mặt hàng
+        - DELETE /order_items/<id>: Xóa một mặt hàng trong đơn hàng
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - order_items
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOrderItemUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOrderItemUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOrderItemUpdateRequest'
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderItemResponse'
+          description: Cập nhật mặt hàng thành công
+        '400':
+          description: Dữ liệu cập nhật không hợp lệ.
+        '404':
+          description: Không tìm thấy mặt hàng cần cập nhật.
+        '401':
+          description: Chưa xác thực qua Auth Service.
+    delete:
+      operationId: order_items_destroy
+      description: |-
+        Controller xử lý:
+        - GET /order_items/<id>: Lấy thông tin chi tiết một mặt hàng
+        - PUT/PATCH /order_items/<id>: Cập nhật mặt hàng
+        - DELETE /order_items/<id>: Xóa một mặt hàng trong đơn hàng
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - order_items
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Xóa mặt hàng khỏi đơn hàng thành công
+        '404':
+          description: Không tìm thấy mặt hàng cần xóa.
+        '401':
+          description: Chưa xác thực qua Auth Service.
+  /orders/:
+    get:
+      operationId: orders_retrieve
+      description: |-
+        **Yêu cầu xác thực qua Auth Service (Bài 2)**: Header `Authorization: Bearer <token>`.
+
+        - **GET /orders**: Lấy danh sách tất cả các đơn hàng (hỗ trợ lọc `?status=pending|completed|cancelled` và `?search=...`).
+        - **POST /orders**: Tạo đơn hàng mới. Tự động liên lạc sang **Product Service** (cổng 8001) để kiểm tra tồn kho và đơn giá sản phẩm.
+      summary: 1. Lấy danh sách hoặc Tạo mới đơn hàng
+      parameters:
+      - in: query
+        name: search
+        schema:
+          type: string
+        description: Tìm kiếm theo tên khách hàng hoặc email
+      - in: query
+        name: status
+        schema:
+          type: string
+        description: Lọc theo trạng thái đơn hàng (pending, completed, cancelled)
+      tags:
+      - orders
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderListResponse'
+          description: Lấy danh sách đơn hàng thành công
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ.
+    post:
+      operationId: orders_create
+      description: |-
+        Controller xử lý:
+        - GET /orders: Lấy danh sách tất cả đơn hàng
+        - POST /orders: Tạo đơn hàng mới (kiểm tra tồn kho qua Product Service)
+      tags:
+      - orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderCreateRequest'
+            examples:
+              VíDụTạoĐơnHàngKèmDanhSáchSảnPhẩm:
+                value:
+                  customer_name: Nguyễn Văn An
+                  customer_email: an.nguyen@example.com
+                  status: pending
+                  items:
+                  - product_id: 1
+                    quantity: 2
+                  - product_id: 2
+                    quantity: 1
+                summary: Ví dụ tạo đơn hàng kèm danh sách sản phẩm
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrderCreateRequest'
+        required: true
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+              examples:
+                VíDụTạoĐơnHàngKèmDanhSáchSảnPhẩm:
+                  value:
+                    customer_name: Nguyễn Văn An
+                    customer_email: an.nguyen@example.com
+                    status: pending
+                    items:
+                    - product_id: 1
+                      quantity: 2
+                    - product_id: 2
+                      quantity: 1
+                  summary: Ví dụ tạo đơn hàng kèm danh sách sản phẩm
+          description: Tạo đơn hàng thành công
+        '400':
+          description: Dữ liệu không hợp lệ hoặc sản phẩm không đủ tồn kho.
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ.
+  /orders/{id}/:
+    get:
+      operationId: orders_retrieve_2
+      description: |-
+        **Yêu cầu xác thực qua Auth Service (Bài 2)**: Header `Authorization: Bearer <token>`.
+
+        - **GET /orders/<id>**: Lấy thông tin chi tiết một đơn hàng cùng các mặt hàng bên trong.
+        - **PUT /orders/<id>** hoặc **PATCH**: Cập nhật trạng thái đơn hàng (pending, completed, cancelled) hoặc thông tin khách hàng.
+        - **DELETE /orders/<id>**: Xóa một đơn hàng khỏi hệ thống.
+      summary: 2. Chi tiết, Cập nhật trạng thái và Xóa đơn hàng theo ID
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        description: ID duy nhất của đơn hàng
+        required: true
+      tags:
+      - orders
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+          description: Lấy chi tiết đơn hàng thành công
+        '404':
+          description: Không tìm thấy đơn hàng với ID cung cấp.
+        '401':
+          description: Chưa xác thực qua Auth Service.
+    put:
+      operationId: orders_update
+      description: |-
+        Controller xử lý:
+        - GET /orders/<id>: Chi tiết đơn hàng
+        - PUT/PATCH /orders/<id>: Cập nhật trạng thái đơn hàng
+        - DELETE /orders/<id>: Xóa đơn hàng
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderUpdateRequest'
+            examples:
+              VíDụCậpNhậtTrạngTháiĐơnHàngSangCompleted:
+                value:
+                  status: completed
+                summary: Ví dụ cập nhật trạng thái đơn hàng sang completed
+              VíDụHủyĐơnHàng:
+                value:
+                  status: cancelled
+                summary: Ví dụ hủy đơn hàng
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OrderUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OrderUpdateRequest'
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+              examples:
+                VíDụCậpNhậtTrạngTháiĐơnHàngSangCompleted:
+                  value:
+                    status: completed
+                  summary: Ví dụ cập nhật trạng thái đơn hàng sang completed
+                VíDụHủyĐơnHàng:
+                  value:
+                    status: cancelled
+                  summary: Ví dụ hủy đơn hàng
+          description: Cập nhật đơn hàng thành công
+        '400':
+          description: Dữ liệu cập nhật không hợp lệ.
+        '404':
+          description: Không tìm thấy đơn hàng cần cập nhật.
+        '401':
+          description: Chưa xác thực qua Auth Service.
+    patch:
+      operationId: orders_partial_update
+      description: |-
+        Controller xử lý:
+        - GET /orders/<id>: Chi tiết đơn hàng
+        - PUT/PATCH /orders/<id>: Cập nhật trạng thái đơn hàng
+        - DELETE /orders/<id>: Xóa đơn hàng
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - orders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOrderUpdateRequest'
+            examples:
+              VíDụCậpNhậtTrạngTháiĐơnHàngSangCompleted:
+                value:
+                  status: completed
+                summary: Ví dụ cập nhật trạng thái đơn hàng sang completed
+              VíDụHủyĐơnHàng:
+                value:
+                  status: cancelled
+                summary: Ví dụ hủy đơn hàng
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOrderUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOrderUpdateRequest'
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+              examples:
+                VíDụCậpNhậtTrạngTháiĐơnHàngSangCompleted:
+                  value:
+                    status: completed
+                  summary: Ví dụ cập nhật trạng thái đơn hàng sang completed
+                VíDụHủyĐơnHàng:
+                  value:
+                    status: cancelled
+                  summary: Ví dụ hủy đơn hàng
+          description: Cập nhật đơn hàng thành công
+        '400':
+          description: Dữ liệu cập nhật không hợp lệ.
+        '404':
+          description: Không tìm thấy đơn hàng cần cập nhật.
+        '401':
+          description: Chưa xác thực qua Auth Service.
+    delete:
+      operationId: orders_destroy
+      description: |-
+        Controller xử lý:
+        - GET /orders/<id>: Chi tiết đơn hàng
+        - PUT/PATCH /orders/<id>: Cập nhật trạng thái đơn hàng
+        - DELETE /orders/<id>: Xóa đơn hàng
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - orders
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Xóa đơn hàng thành công
+        '404':
+          description: Không tìm thấy đơn hàng cần xóa.
+        '401':
+          description: Chưa xác thực qua Auth Service.
+components:
+  schemas:
+    Order:
+      type: object
+      description: Serializer hiển thị thông tin đơn hàng cùng danh sách chi tiết
+        các mặt hàng.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          description: ID duy nhất của đơn hàng
+        customer_name:
+          type: string
+          description: Tên khách hàng
+          maxLength: 255
+        customer_email:
+          type: string
+          description: Email khách hàng
+          maxLength: 255
+        total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+          description: Tổng số tiền của đơn hàng
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          description: |-
+            Trạng thái của đơn hàng (pending, completed, cancelled)
+
+            * `pending` - Pending
+            * `completed` - Completed
+            * `cancelled` - Cancelled
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Ngày đơn hàng được tạo
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: Ngày đơn hàng được cập nhật lần cuối
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+          readOnly: true
+      required:
+      - created_at
+      - customer_email
+      - customer_name
+      - id
+      - items
+      - total_amount
+      - updated_at
+    OrderCreateRequest:
+      type: object
+      description: |-
+        Serializer tiếp nhận yêu cầu tạo đơn hàng mới (POST /orders).
+        Hỗ trợ tạo đơn hàng kèm luôn danh sách các sản phẩm (items).
+      properties:
+        customer_name:
+          type: string
+          minLength: 1
+          description: Tên khách hàng
+          maxLength: 255
+        customer_email:
+          type: string
+          format: email
+          minLength: 1
+          description: Email khách hàng
+          maxLength: 255
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          default: pending
+          description: |-
+            Trạng thái ban đầu của đơn hàng (mặc định: pending)
+
+            * `pending` - Pending
+            * `completed` - Completed
+            * `cancelled` - Cancelled
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemNestedInputRequest'
+          description: Danh sách mặt hàng đặt mua kèm theo
+      required:
+      - customer_email
+      - customer_name
+    OrderItem:
+      type: object
+      description: Serializer hiển thị đầy đủ thông tin một chi tiết đơn hàng (order_items).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          description: ID duy nhất của chi tiết đơn hàng
+        order_id:
+          type: integer
+          readOnly: true
+        product_id:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: ID sản phẩm (lưu vết để liên kết với dịch vụ quản lý sản phẩm)
+        product_name:
+          type: string
+          description: Tên sản phẩm
+          maxLength: 255
+        quantity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+          description: Số lượng sản phẩm trong đơn hàng
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Giá sản phẩm tại thời điểm đặt hàng
+        total_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+          description: Tổng giá trị cho từng sản phẩm (quantity * unit_price)
+      required:
+      - id
+      - order_id
+      - product_id
+      - product_name
+      - total_price
+      - unit_price
+    OrderItemCreateRequest:
+      type: object
+      description: Serializer cho API thêm mới mặt hàng trực tiếp (POST /order_items).
+      properties:
+        order_id:
+          type: integer
+          description: ID của đơn hàng muốn thêm mặt hàng vào
+        product_id:
+          type: integer
+          description: ID của sản phẩm trong Product Service
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Số lượng mua (>= 1)
+        product_name:
+          type: string
+          description: Tùy chọn. Nếu không truyền, hệ thống sẽ tự động lấy từ Product
+            Service.
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Tùy chọn. Nếu không truyền, hệ thống sẽ tự động lấy từ Product
+            Service.
+      required:
+      - order_id
+      - product_id
+    OrderItemListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        total:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+      required:
+      - data
+      - message
+      - total
+    OrderItemNestedInputRequest:
+      type: object
+      description: Serializer nhập dữ liệu chi tiết sản phẩm lồng trong request tạo
+        đơn hàng (POST /orders).
+      properties:
+        product_id:
+          type: integer
+          description: ID của sản phẩm trong Product Service
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Số lượng mua (>= 1)
+        product_name:
+          type: string
+          description: Tùy chọn. Nếu không truyền, hệ thống sẽ tự động lấy từ Product
+            Service.
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Tùy chọn. Nếu không truyền, hệ thống sẽ tự động lấy từ Product
+            Service.
+      required:
+      - product_id
+    OrderItemResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          allOf:
+          - $ref: '#/components/schemas/OrderItem'
+          nullable: true
+      required:
+      - data
+      - message
+    OrderItemUpdateRequest:
+      type: object
+      description: Serializer cho API cập nhật mặt hàng (PUT/PATCH /order_items/<id>).
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+          description: Số lượng mới
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Đơn giá mới
+        product_name:
+          type: string
+          minLength: 1
+          description: Tên sản phẩm mới
+          maxLength: 255
+    OrderListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        total:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+      required:
+      - data
+      - message
+      - total
+    OrderResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          allOf:
+          - $ref: '#/components/schemas/Order'
+          nullable: true
+      required:
+      - data
+      - message
+    OrderUpdateRequest:
+      type: object
+      description: Serializer cập nhật thông tin đơn hàng / trạng thái đơn hàng (PUT/PATCH
+        /orders/<id>).
+      properties:
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          description: |-
+            Trạng thái mới của đơn hàng (pending, completed, cancelled)
+
+            * `pending` - Pending
+            * `completed` - Completed
+            * `cancelled` - Cancelled
+        customer_name:
+          type: string
+          minLength: 1
+          description: Tên khách hàng mới
+          maxLength: 255
+        customer_email:
+          type: string
+          format: email
+          minLength: 1
+          description: Email khách hàng mới
+          maxLength: 255
+    PatchedOrderItemUpdateRequest:
+      type: object
+      description: Serializer cho API cập nhật mặt hàng (PUT/PATCH /order_items/<id>).
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+          description: Số lượng mới
+        unit_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Đơn giá mới
+        product_name:
+          type: string
+          minLength: 1
+          description: Tên sản phẩm mới
+          maxLength: 255
+    PatchedOrderUpdateRequest:
+      type: object
+      description: Serializer cập nhật thông tin đơn hàng / trạng thái đơn hàng (PUT/PATCH
+        /orders/<id>).
+      properties:
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          description: |-
+            Trạng thái mới của đơn hàng (pending, completed, cancelled)
+
+            * `pending` - Pending
+            * `completed` - Completed
+            * `cancelled` - Cancelled
+        customer_name:
+          type: string
+          minLength: 1
+          description: Tên khách hàng mới
+          maxLength: 255
+        customer_email:
+          type: string
+          format: email
+          minLength: 1
+          description: Email khách hàng mới
+          maxLength: 255
+    StatusEnum:
+      enum:
+      - pending
+      - completed
+      - cancelled
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `completed` - Completed
+        * `cancelled` - Cancelled
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Nhập token JWT lấy được từ Auth Service (POST http://localhost:8000/login).

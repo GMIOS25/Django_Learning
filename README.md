@@ -3,6 +3,7 @@
 > **Bài Thực Hành Số 1:** Cài đặt và cấu hình môi trường xây dựng API ("Hello World")  
 > **Bài Thực Hành Số 2:** Router, Middleware và Bảo mật với JWT trong RESTful API  
 > **Bài Thực Hành Số 3:** Xây dựng Dịch vụ Quản lý Sản phẩm theo Kiến trúc Hướng Dịch vụ (SOA)  
+> **Bài Thực Hành Số 4:** Xây dựng Dịch vụ Quản lý Đơn hàng theo Kiến trúc Hướng Dịch vụ (SOA)  
 
 ---
 
@@ -26,7 +27,7 @@
 
 Dự án này là chuỗi thực hành hoàn chỉnh nhằm xây dựng hệ thống **RESTful API phân tán theo kiến trúc hướng dịch vụ (SOA - Service-Oriented Architecture)** sử dụng ngôn ngữ **Python** và nền tảng **Django / Django REST Framework (DRF)**.
 
-Dự án tích hợp đầy đủ nội dung của **cả 3 bài thực hành**:
+Dự án tích hợp đầy đủ nội dung của **cả 4 bài thực hành**:
 - **Bài thực hành số 1:** Thiết lập môi trường Python/Django, cài đặt REST Framework, xây dựng API đầu tiên in dòng chuỗi JSON `{"message": "hello-world"}` và kiểm thử qua Postman / Swagger.
 - **Bài thực hành số 2:** Mở rộng hệ thống thành **Authentication Service (Cổng 8000)**:
   - Cơ chế định tuyến linh hoạt (**Router & URL Rewrite**).
@@ -39,6 +40,13 @@ Dự án tích hợp đầy đủ nội dung của **cả 3 bài thực hành**:
   - Đầy đủ bộ RESTful API CRUD: `GET /products`, `GET /products/:id`, `POST /products`, `PUT /products/:id`, `PATCH /products/:id`, `DELETE /products/:id`.
   - Cơ chế xác thực liên dịch vụ (**Inter-Service Authentication**): Product Service tự động liên lạc sang Auth Service (`http://127.0.0.1:8000/auth`) để thẩm định tính hợp lệ của token JWT.
   - Tích hợp tài liệu Swagger UI riêng biệt tại `http://localhost:8001/swagger/`.
+- **Bài thực hành số 4:** Xây dựng **Order Management Service (Cổng 8002)** độc lập theo kiến trúc **SOA**:
+  - Chạy trên một cổng riêng (`localhost:8002/`) và cơ sở dữ liệu SQLite riêng (`orders_db.sqlite3`).
+  - Bảng đơn hàng (`orders`) và chi tiết đơn hàng (`order_items`).
+  - Bộ RESTful API CRUD hoàn chỉnh cho đơn hàng (`/orders`, `/orders/:id`) và chi tiết mặt hàng (`/order_items`, `/order_items/:id`).
+  - Cơ chế xác thực liên dịch vụ: Thẩm định JWT thông qua Auth Service (`http://127.0.0.1:8000/auth`).
+  - Kiểm tra và đồng bộ tồn kho liên dịch vụ: Tự động kiểm tra số lượng tồn kho và đơn giá từ Product Service (`http://127.0.0.1:8001/products`), trừ tồn kho khi đặt hàng và hoàn tồn kho khi hủy đơn hoặc xóa mặt hàng.
+  - Tích hợp tài liệu tương tác Swagger UI tại `http://localhost:8002/swagger/`.
 
 ---
 
@@ -75,41 +83,55 @@ Dự án tích hợp đầy đủ nội dung của **cả 3 bài thực hành**:
 | **9. Xác thực qua service ở Bài thực hành số 2** |  **100% Đạt** | Lớp xác thực [AuthServiceAuthentication](file:///d:/CODES/Py/Django_Learning/product_service/products/authentication.py) tự động gửi request HTTP sang `http://127.0.0.1:8000/auth` để xác thực token JWT, chặn 401 nếu token không hợp lệ hoặc đã hết hạn. |
 | **10. Swagger UI & Kiểm thử tự động** |  **100% Đạt** | Swagger UI tương tác tại `http://localhost:8001/swagger/`. Bộ 17 bài Unit & Integration Tests đạt 100% tại `product_service/products/tests.py`. |
 
+### Đối chiếu Bài Thực Hành Số 4:
+| Yêu cầu trong PDF Bài 4 | Tình trạng | Vị trí triển khai trong Codebase |
+| :--- | :---: | :--- |
+| **1. Khởi tạo một cổng mới cho service (`localhost:***2/`)** |  **100% Đạt** | Service quản lý đơn hàng chạy độc lập trên cổng `8002` (`http://localhost:8002/`). Script khởi chạy riêng [run_order_service.bat](file:///d:/CODES/Py/Django_Learning/run_order_service.bat). |
+| **2. Cơ sở dữ liệu riêng biệt theo nguyên tắc SOA** |  **100% Đạt** | Tách cơ sở dữ liệu riêng `order_service/orders_db.sqlite3` không dùng chung file hay bảng với Auth và Product Service. |
+| **3. Bảng đơn hàng (`orders`) theo Phụ lục**<br>- `id`: INT (PK)<br>- `customer_name`: VARCHAR(255)<br>- `customer_email`: VARCHAR(255)<br>- `total_amount`: DECIMAL(10, 2)<br>- `status`: VARCHAR(50) (pending, completed, cancelled)<br>- `created_at`: TIMESTAMP<br>- `updated_at`: TIMESTAMP |  **100% Đạt** | Model `Order` tại [order_service/orders/models.py](file:///d:/CODES/Py/Django_Learning/order_service/orders/models.py#L5). Đã tạo migration `0001_initial.py` và đăng ký trong Django Admin [order_service/orders/admin.py](file:///d:/CODES/Py/Django_Learning/order_service/orders/admin.py). |
+| **4. Bảng chi tiết đơn hàng (`order_items`) theo Phụ lục**<br>- `id`: INT (PK)<br>- `order_id`: INT (FK `orders`)<br>- `product_id`: INT (lưu vết Product Service)<br>- `product_name`: VARCHAR(255)<br>- `quantity`: INT<br>- `unit_price`: DECIMAL(10, 2)<br>- `total_price`: DECIMAL(10, 2) |  **100% Đạt** | Model `OrderItem` tại [order_service/orders/models.py](file:///d:/CODES/Py/Django_Learning/order_service/orders/models.py#L80). Tự động tính toán `total_price = quantity * unit_price` và cập nhật lại `total_amount` của `Order`. |
+| **5. RESTful API `GET /orders` & `GET /orders/:id`** |  **100% Đạt** | Triển khai tại [order_service/orders/views.py](file:///d:/CODES/Py/Django_Learning/order_service/orders/views.py). Hỗ trợ lọc theo trạng thái (`?status=...`) và tìm kiếm (`?search=...`). |
+| **6. RESTful API `POST /orders` (Kiểm tra tồn kho)** |  **100% Đạt** | Tạo đơn hàng mới, tự động gọi sang Product Service để kiểm tra tồn kho (`check_stock`) và trừ tồn kho (`deduct_stock`). Trả về 400 nếu không đủ tồn kho. |
+| **7. RESTful API `PUT /orders/:id` (Cập nhật trạng thái)** |  **100% Đạt** | Cập nhật trạng thái đơn hàng (`pending`, `completed`, `cancelled`). Nếu chuyển sang `cancelled`, tự động hoàn trả số lượng tồn kho về Product Service (`restore_stock`). |
+| **8. RESTful API `DELETE /orders/:id` (Xóa đơn hàng)** |  **100% Đạt** | Xóa đơn hàng và tự động hoàn trả tồn kho cho các sản phẩm nếu đơn hàng chưa bị hủy. |
+| **9. RESTful API Chi tiết đơn hàng (`GET/POST/PUT/DELETE /order_items`)** |  **100% Đạt** | Đầy đủ bộ CRUD cho `order_items`, tự động đồng bộ tồn kho sang Product Service và tính lại `total_amount` của đơn hàng cha. |
+| **10. Xác thực qua service ở Bài thực hành số 2** |  **100% Đạt** | Lớp xác thực [AuthServiceAuthentication](file:///d:/CODES/Py/Django_Learning/order_service/orders/authentication.py) thẩm định token JWT qua `http://127.0.0.1:8000/auth`. |
+| **11. Swagger UI & Kiểm thử tự động** |  **100% Đạt** | Giao diện tương tác Swagger UI tại `http://localhost:8002/swagger/`. Bộ 23 bài Unit & Integration Tests đạt 100% tại [order_service/orders/tests.py](file:///d:/CODES/Py/Django_Learning/order_service/orders/tests.py). |
+
 ---
 
 ## 3. KIẾN TRÚC HỆ THỐNG & LUỒNG XỬ LÝ (WORKFLOW SOA)
 
-### 3.1. Sơ đồ kiến trúc SOA (Kiến trúc hướng dịch vụ 2 Services độc lập)
+### 3.1. Sơ đồ kiến trúc SOA (Kiến trúc hướng dịch vụ 3 Services độc lập)
 ```text
-+---------------------------------------------------------------------------------------------------+
-|                                 CLIENT (Postman / Browser / Swagger UI)                           |
-+---------------------------------------------------------------------------------------------------+
-             |                                                                 |
-    (1) Đăng nhập lấy JWT Token                                       (3) Thao tác CRUD Sản phẩm
-    POST http://localhost:8000/login                                  GET/POST/PUT/DELETE http://localhost:8001/products
-             |                                                                 | (Kèm Header Authorization: Bearer <token>)
-             v                                                                 v
-+-------------------------------------------+               +-------------------------------------------+
-|          DỊCH VỤ 1: AUTH SERVICE          |               |        DỊCH VỤ 2: PRODUCT SERVICE         |
-|         (Chạy tại cổng :8000)             |               |           (Chạy tại cổng :8001)           |
-|                                           |  (4) HTTP     |                                           |
-|  - Cấp phát JWT & mã hóa MD5/Base64       |<--------------|  - Controller CRUD Sản phẩm               |
-|  - Middleware bảo vệ /hello               |    POST /auth |  - AuthServiceAuthentication              |
-|  - Endpoint xác thực token: /auth         |    (Xác thực  |  - Giao diện Swagger: :8001/swagger/      |
-|  - Swagger UI: :8000/swagger/             |     liên SV)  |                                           |
-+-------------------------------------------+               +-------------------------------------------+
-                     |                                                                 |
-                     v                                                                 v
-+-------------------------------------------+               +-------------------------------------------+
-|          DATABASE RIÊNG: db.sqlite3       |               |     DATABASE RIÊNG: products_db.sqlite3   |
-|                 (Bảng User)               |               |              (Bảng products)              |
-+-------------------------------------------+               +-------------------------------------------+
++------------------------------------------------------------------------------------------------------------------------+
+|                                        CLIENT (Postman / Browser / Swagger UI)                                         |
++------------------------------------------------------------------------------------------------------------------------+
+           |                                             |                                               |
+  (1) POST /login (lấy JWT)                     (3) CRUD Sản phẩm                               (5) CRUD Đơn hàng & Items
+  http://localhost:8000/login                   http://localhost:8001/products                  http://localhost:8002/orders
+           |                                             |                                               |
+           v                                             v                                               v
++-------------------------------+             +-------------------------------+               +-------------------------------+
+|    DỊCH VỤ 1: AUTH SERVICE    |             |  DỊCH VỤ 2: PRODUCT SERVICE   |               |   DỊCH VỤ 3: ORDER SERVICE    |
+|     (Chạy tại cổng :8000)     |  (4) /auth  |     (Chạy tại cổng :8001)     | (6b) check/   |     (Chạy tại cổng :8002)     |
+|                               |<------------|                               |<--------------|                               |
+| - Cấp phát & Thẩm định JWT    |  (Xác thực) | - CRUD Danh mục Sản phẩm      | deduct/restore| - CRUD Đơn hàng & Mặt hàng    |
+| - Middleware bảo vệ API       |             | - Kiểm tra & trừ tồn kho      | tồn kho SP    | - Tính tổng tiền tự động      |
+| - DB: db.sqlite3 (User)       |<------------------------------------------------------------| - DB: orders_db.sqlite3       |
+| - Swagger: :8000/swagger/     |                                 (6a) POST /auth (Xác thực)  | - Swagger: :8002/swagger/     |
++-------------------------------+                                                             +-------------------------------+
 ```
 
-### 3.2. Luồng xác thực liên dịch vụ (Inter-Service Authentication)
-1. **Bước 1 (Client -> Auth Service):** Client gửi `POST http://localhost:8000/login` với `userName` và `password` (Base64 hoặc MD5). Auth Service trả về chuỗi `token` JWT.
-2. **Bước 2 (Client -> Product Service):** Client gọi API quản lý sản phẩm `http://localhost:8001/products` kèm Header `Authorization: Bearer <token>`.
-3. **Bước 3 (Product Service -> Auth Service):** Lớp `AuthServiceAuthentication` của Product Service tự động gửi request HTTP `POST http://127.0.0.1:8000/auth` để hỏi Auth Service tính hợp lệ của token.
+### 3.2. Luồng xử lý nghiệp vụ đơn hàng & Tương tác liên dịch vụ (Inter-Service Workflow)
+1. **Bước 1 (Đăng nhập):** Client gửi `POST http://localhost:8000/login` lấy token JWT từ Auth Service.
+2. **Bước 2 (Đặt đơn hàng):** Client gửi `POST http://localhost:8002/orders` kèm `Authorization: Bearer <token>` và danh sách sản phẩm cần mua (`items`).
+3. **Bước 3 (Xác thực danh tính):** Order Service tự động gọi `POST http://127.0.0.1:8000/auth` để xác thực token.
+4. **Bước 4 (Kiểm tra tồn kho):** Order Service gọi `GET http://127.0.0.1:8001/products/<id>` để kiểm tra số lượng tồn kho `quantity` của từng sản phẩm.
+   - Nếu tồn kho không đủ: Order Service trả về `400 Bad Request` nêu rõ lý do.
+   - Nếu đủ tồn kho: Tiếp tục bước 5.
+5. **Bước 5 (Tạo đơn hàng & Trừ tồn kho):** Order Service ghi nhận đơn hàng và các mặt hàng trong cơ sở dữ liệu `orders_db.sqlite3` trong một giao dịch nguyên tử (`transaction.atomic`), sau đó gọi `PATCH http://127.0.0.1:8001/products/<id>` để trừ số lượng tồn kho trên Product Service.
+6. **Bước 6 (Hủy đơn hàng / Hoàn kho):** Khi đơn hàng bị hủy (`status = cancelled`) hoặc bị xóa, Order Service tự động gọi hoàn lại số lượng tồn kho tương ứng về Product Service.
 4. **Bước 4 (Phản hồi & Thực thi):**
    - Nếu Auth Service trả về `valid: true`: Product Service thực hiện truy vấn cơ sở dữ liệu `products_db.sqlite3` và trả về kết quả (200 OK / 201 Created).
    - Nếu Token sai, hết hạn hoặc Auth Service trả về 401: Product Service lập tức từ chối với mã lỗi `401 Unauthorized`.
@@ -160,6 +182,52 @@ class Product(models.Model):
 | **`created_at`** | `TIMESTAMP` | `auto_now_add=True` | Ngày giờ sản phẩm được tạo |
 | **`updated_at`** | `TIMESTAMP` | `auto_now=True` | Ngày giờ sản phẩm được cập nhật gần nhất |
 
+### 4.3. Bảng `orders` & `order_items` (Order Service - file `order_service/orders_db.sqlite3`)
+
+#### Bảng `orders` (Đơn hàng):
+```python
+class Order(models.Model):
+    id = models.AutoField(primary_key=True, db_column='id')
+    customer_name = models.CharField(max_length=255, db_column='customer_name')
+    customer_email = models.CharField(max_length=255, db_column='customer_email')
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), db_column='total_amount')
+    status = models.CharField(max_length=50, default='pending', db_column='status')
+    created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
+    updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')
+```
+
+| Tên trường (Column) | Kiểu dữ liệu | Thuộc tính / Ràng buộc | Mục đích sử dụng |
+| :--- | :--- | :--- | :--- |
+| **`id`** | `INT` (`AutoField`) | **PRIMARY KEY**, Auto Increment | ID duy nhất của đơn hàng |
+| **`customer_name`** | `VARCHAR(255)` | `NOT NULL` | Tên khách hàng đặt đơn |
+| **`customer_email`** | `VARCHAR(255)` | `NOT NULL` | Email liên hệ của khách hàng |
+| **`total_amount`** | `DECIMAL(10, 2)` | `DEFAULT 0.00` | Tổng giá trị đơn hàng (tự động cộng dồn từ items) |
+| **`status`** | `VARCHAR(50)` | `pending`, `completed`, `cancelled` | Trạng thái hiện tại của đơn hàng |
+| **`created_at`** | `TIMESTAMP` | `auto_now_add=True` | Thời điểm đơn hàng được tạo |
+| **`updated_at`** | `TIMESTAMP` | `auto_now=True` | Thời điểm đơn hàng cập nhật gần nhất |
+
+#### Bảng `order_items` (Chi tiết mặt hàng trong đơn):
+```python
+class OrderItem(models.Model):
+    id = models.AutoField(primary_key=True, db_column='id')
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items', db_column='order_id')
+    product_id = models.IntegerField(db_column='product_id')
+    product_name = models.CharField(max_length=255, db_column='product_name')
+    quantity = models.IntegerField(default=1, db_column='quantity')
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, db_column='unit_price')
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, db_column='total_price')
+```
+
+| Tên trường (Column) | Kiểu dữ liệu | Thuộc tính / Ràng buộc | Mục đích sử dụng |
+| :--- | :--- | :--- | :--- |
+| **`id`** | `INT` (`AutoField`) | **PRIMARY KEY**, Auto Increment | ID duy nhất của chi tiết đơn hàng |
+| **`order_id`** | `INT` | `FOREIGN KEY` (`orders.id`) | Liên kết tới đơn hàng cha |
+| **`product_id`** | `INT` | `NOT NULL` | Lưu vết ID sản phẩm từ Product Service |
+| **`product_name`** | `VARCHAR(255)` | `NOT NULL` | Tên sản phẩm tại thời điểm mua |
+| **`quantity`** | `INT` | `DEFAULT 1`, `>= 1` | Số lượng sản phẩm mua |
+| **`unit_price`** | `DECIMAL(10, 2)` | `NOT NULL` | Đơn giá tại thời điểm đặt hàng |
+| **`total_price`** | `DECIMAL(10, 2)` | `quantity * unit_price` | Thành tiền từng mặt hàng |
+
 ---
 
 ## 5. CẤU TRÚC THƯ MỤC MÃ NGUỒN
@@ -201,15 +269,38 @@ Django_Learning/
 │       ├── urls.py                     # Tuyến đường /products và /products/<id>
 │       └── views.py                    # Controller CRUD: List, Create, Retrieve, Update, Delete
 │
+├── order_service/                      # SERVICE 3: Quản lý Đơn hàng (Bài 4 - SOA)
+│   ├── manage.py                       # CLI riêng cho Order Service (Port 8002)
+│   ├── orders_db.sqlite3               # Database SQLite riêng biệt của Order Service
+│   ├── schema.yml                      # OpenAPI 3.0 Schema file
+│   ├── order_project/                  # Cấu hình dự án Service 3
+│   │   ├── settings.py                 # DB riêng, AUTH & PRODUCT service URLs, Swagger :8002
+│   │   ├── urls.py                     # Định tuyến /orders, /order_items, /swagger :8002
+│   │   ├── asgi.py & wsgi.py
+│   └── orders/                         # Ứng dụng Đơn hàng
+│       ├── management/commands/seed_orders.py # Lệnh tạo dữ liệu đơn hàng mẫu
+│       ├── migrations/0001_initial.py  # Schema bảng orders và order_items
+│       ├── admin.py                    # Quản trị Order & OrderItem trong Django Admin :8002
+│       ├── authentication.py           # Xác thực liên dịch vụ sang Service 1 (:8000/auth)
+│       ├── product_client.py           # Giao tiếp kiểm tra/trừ/hoàn tồn kho sang Service 2 (:8001)
+│       ├── models.py                   # Model Order & OrderItem theo Phụ lục Bài 4
+│       ├── serializers.py              # Serializer dữ liệu đơn hàng & chi tiết mặt hàng
+│       ├── tests.py                    # 23 bài kiểm thử tự động cho Service 3
+│       ├── urls.py                     # Tuyến đường /orders và /order_items
+│       └── views.py                    # Controller CRUD Order & OrderItem (Kiểm tra tồn kho)
+│
 ├── docs/                               # Tài liệu đề bài gốc
 │   ├── BÀI THỰC HÀNH SỐ 1.pdf
 │   ├── BÀI THỰC HÀNH SỐ 2.pdf
-│   └── BÀI THỰC HÀNH SỐ 3.pdf
+│   ├── BÀI THỰC HÀNH SỐ 3.pdf
+│   ├── BÀI THỰC HÀNH SỐ 4.pdf
+│   └── BÀI THỰC HÀNH SỐ 5.pdf
 │
-├── run_all_services.bat                # Script chạy đồng thời cả 2 services
+├── run_all_services.bat                # Script chạy đồng thời cả 3 services (Port 8000, 8001, 8002)
 ├── run_auth_service.bat                # Script chạy riêng Service 1 (Cổng 8000)
 ├── run_product_service.bat             # Script chạy riêng Service 2 (Cổng 8001)
-├── run_tests.bat                       # Script chạy 26 bài test của cả 2 services
+├── run_order_service.bat               # Script chạy riêng Service 3 (Cổng 8002)
+├── run_tests.bat                       # Script chạy 49 bài test của cả 3 services
 ├── db.sqlite3                          # Database của Auth Service
 ├── manage.py                           # CLI của Auth Service
 ├── requirements.txt                    # Thư viện phụ thuộc (Django, DRF, PyJWT, requests...)
@@ -266,7 +357,7 @@ pip install -r requirements.txt
 
 ---
 
-### Bước 3: Đồng bộ Cơ sở dữ liệu (Migration) cho cả 2 Services
+### Bước 3: Đồng bộ Cơ sở dữ liệu (Migration) cho cả 3 Services
 
 Khởi tạo và cập nhật cấu trúc database riêng cho từng service:
 ```bash
@@ -277,13 +368,17 @@ python manage.py migrate
 # 2. Đồng bộ bảng products cho Product Service (Kiến trúc SOA)
 python product_service/manage.py makemigrations
 python product_service/manage.py migrate
+
+# 3. Đồng bộ bảng orders và order_items cho Order Service (Kiến trúc SOA)
+python order_service/manage.py makemigrations
+python order_service/manage.py migrate
 ```
 
 ---
 
 ### Bước 4: Nạp dữ liệu mẫu để kiểm thử (Seed Data)
 
-Dự án tích hợp sẵn 2 câu lệnh tạo nhanh tài khoản và danh sách sản phẩm mẫu:
+Dự án tích hợp sẵn 3 câu lệnh tạo nhanh tài khoản, danh mục sản phẩm và đơn hàng mẫu:
 
 1. **Tạo tài khoản người dùng mẫu (Auth Service):**
    ```bash
@@ -300,9 +395,15 @@ Dự án tích hợp sẵn 2 câu lệnh tạo nhanh tài khoản và danh sách
    ```
    - Tự động nạp các sản phẩm mẫu: Laptop Dell XPS 15, Bàn phím cơ Keychron Q1 Pro, Chuột Logitech MX Master 3S, v.v.
 
+3. **Tạo 4 đơn hàng và 6 mặt hàng mẫu (Order Service):**
+   ```bash
+   python order_service/manage.py seed_orders
+   ```
+   - Tự động nạp các đơn hàng mẫu kèm chi tiết mặt hàng theo trạng thái `pending`, `completed`, `cancelled`.
+
 ---
 
-### Bước 5: Khởi động hệ thống (Chạy cả 2 Services)
+### Bước 5: Khởi động hệ thống (Chạy cả 3 Services)
 
 Bạn có thể lựa chọn 1 trong 2 cách sau:
 
@@ -311,9 +412,10 @@ Bạn có thể lựa chọn 1 trong 2 cách sau:
   ```cmd
   run_all_services.bat
   ```
-  Script sẽ tự động mở 2 cửa sổ terminal độc lập:
+  Script sẽ tự động mở 3 cửa sổ terminal độc lập:
   - Cửa sổ 1: Auth Service tại `http://localhost:8000` (Swagger: `http://localhost:8000/swagger/`)
   - Cửa sổ 2: Product Service tại `http://localhost:8001` (Swagger: `http://localhost:8001/swagger/`)
+  - Cửa sổ 3: Order Service tại `http://localhost:8002` (Swagger: `http://localhost:8002/swagger/`)
 
 - **Cách 2: Khởi động thủ công qua lệnh Terminal riêng biệt:**
   - **Terminal 1 (Auth Service - Cổng 8000):**
@@ -323,6 +425,10 @@ Bạn có thể lựa chọn 1 trong 2 cách sau:
   - **Terminal 2 (Product Service - Cổng 8001):**
     ```bash
     python product_service/manage.py runserver 8001
+    ```
+  - **Terminal 3 (Order Service - Cổng 8002):**
+    ```bash
+    python order_service/manage.py runserver 8002
     ```
 
 ---
@@ -355,6 +461,24 @@ Bạn có thể lựa chọn 1 trong 2 cách sau:
 | **Swagger UI** | `GET` | `/swagger/` hoặc `/docs/` | Giao diện tài liệu Swagger Service 2 | Public |
 | **OpenAPI Schema** | `GET` | `/api/schema/` | Tải về cấu hình OpenAPI Service 2 | Public |
 | **Django Admin** | `GET` | `/admin/` | Trang quản trị dữ liệu Products | Cần Superuser |
+
+#### C. DỊCH VỤ 3: ORDER MANAGEMENT SERVICE (`http://localhost:8002`)
+| Chức năng | Phương thức | Đường dẫn (URL) | Mô tả tóm tắt | Quyền truy cập |
+| :--- | :---: | :--- | :--- | :---: |
+| **Thông tin Service** | `GET` | `/` | Trạng thái và danh mục API Order | Public |
+| **Danh sách đơn hàng** | `GET` | `/orders` | Lấy danh sách đơn hàng (`?status=`, `?search=`) |  **Cần Bearer Token (Auth Service)** |
+| **Tạo mới đơn hàng** | `POST` | `/orders` | Tạo đơn hàng mới (kiểm tra tồn kho Product Service) |  **Cần Bearer Token (Auth Service)** |
+| **Chi tiết đơn hàng** | `GET` | `/orders/<id>` | Xem chi tiết đơn hàng kèm danh sách items |  **Cần Bearer Token (Auth Service)** |
+| **Cập nhật trạng thái**| `PUT` / `PATCH`| `/orders/<id>` | Cập nhật trạng thái (hoàn tồn kho nếu cancelled) |  **Cần Bearer Token (Auth Service)** |
+| **Xóa đơn hàng** | `DELETE` | `/orders/<id>` | Xóa đơn hàng và tự động hoàn trả tồn kho |  **Cần Bearer Token (Auth Service)** |
+| **Danh sách mặt hàng** | `GET` | `/order_items` | Lấy tất cả mặt hàng (hỗ trợ `?order_id=`) |  **Cần Bearer Token (Auth Service)** |
+| **Thêm mặt hàng vào đơn** | `POST` | `/order_items` | Thêm mặt hàng (kiểm tra & trừ tồn kho Product Service) |  **Cần Bearer Token (Auth Service)** |
+| **Chi tiết mặt hàng** | `GET` | `/order_items/<id>`| Xem thông tin chi tiết một mặt hàng |  **Cần Bearer Token (Auth Service)** |
+| **Cập nhật mặt hàng** | `PUT` / `PATCH`| `/order_items/<id>`| Sửa số lượng/giá (tự điều chỉnh tồn kho & tổng tiền) |  **Cần Bearer Token (Auth Service)** |
+| **Xóa mặt hàng** | `DELETE` | `/order_items/<id>`| Xóa mặt hàng khỏi đơn (tự hoàn trả tồn kho SP) |  **Cần Bearer Token (Auth Service)** |
+| **Swagger UI** | `GET` | `/swagger/` hoặc `/docs/` | Giao diện tài liệu Swagger Service 3 | Public |
+| **OpenAPI Schema** | `GET` | `/api/schema/` | Tải về cấu hình OpenAPI Service 3 | Public |
+| **Django Admin** | `GET` | `/admin/` | Trang quản trị dữ liệu Orders | Cần Superuser |
 
 ---
 
@@ -638,27 +762,108 @@ Bạn có thể lựa chọn 1 trong 2 cách sau:
 
 ---
 
+#### 8.10. API Tạo Đơn hàng mới (POST /orders - Kiểm tra tồn kho liên dịch vụ)
+- **Phương thức:** `POST`
+- **Đường dẫn:** `http://localhost:8002/orders`
+- **Yêu cầu:** Header `Authorization: Bearer <token>`
+- **Nghiệp vụ:** Order Service tự động liên lạc sang Product Service tại `http://127.0.0.1:8001/products/<id>` để kiểm tra số lượng tồn kho và tự động trừ tồn kho khi tạo đơn thành công.
+- **Body JSON mẫu:**
+  ```json
+  {
+    "customer_name": "Nguyễn Văn An",
+    "customer_email": "an.nguyen@example.com",
+    "status": "pending",
+    "items": [
+      {
+        "product_id": 1,
+        "quantity": 1
+      },
+      {
+        "product_id": 3,
+        "quantity": 2
+      }
+    ]
+  }
+  ```
+- **Phản hồi thành công (`201 Created`):**
+  ```json
+  {
+    "message": "Tạo đơn hàng thành công.",
+    "data": {
+      "id": 5,
+      "customer_name": "Nguyễn Văn An",
+      "customer_email": "an.nguyen@example.com",
+      "total_amount": "47080000.00",
+      "status": "pending",
+      "created_at": "2026-11-09T21:50:00Z",
+      "updated_at": "2026-11-09T21:50:00Z",
+      "items": [
+        {
+          "id": 7,
+          "order_id": 5,
+          "product_id": 1,
+          "product_name": "Laptop Dell XPS 15 9530",
+          "quantity": 1,
+          "unit_price": "42500000.00",
+          "total_price": "42500000.00"
+        },
+        {
+          "id": 8,
+          "order_id": 5,
+          "product_id": 3,
+          "product_name": "Chuột không dây Logitech MX Master 3S",
+          "quantity": 2,
+          "unit_price": "2290000.00",
+          "total_price": "4580000.00"
+        }
+      ]
+    }
+  }
+  ```
+
+---
+
+#### 8.11. API Chi tiết & Cập nhật Trạng thái Đơn hàng (GET /orders/:id, PUT /orders/:id)
+- **Phương thức:** `GET` (Chi tiết), `PUT` / `PATCH` (Cập nhật trạng thái)
+- **Đường dẫn:** `http://localhost:8002/orders/1`
+- **Yêu cầu:** Header `Authorization: Bearer <token>`
+- **Body JSON Cập nhật Trạng thái sang Cancelled (Hủy đơn hàng):**
+  ```json
+  {
+    "status": "cancelled"
+  }
+  ```
+  *(Khi đơn hàng chuyển sang `cancelled`, Order Service sẽ tự động hoàn trả số lượng tồn kho các mặt hàng về Product Service).*
+
+---
+
+#### 8.12. API Quản lý Mặt hàng trong Đơn hàng (CRUD /order_items)
+- **GET /order_items?order_id=1**: Lấy danh sách mặt hàng của đơn hàng #1.
+- **POST /order_items**: Thêm một mặt hàng mới vào đơn hàng (tự động kiểm tra và trừ tồn kho SP, đồng thời tính lại `total_amount` của đơn hàng).
+- **PUT /order_items/:id**: Điều chỉnh số lượng mặt hàng (tự động bù trừ tồn kho trên Product Service).
+- **DELETE /order_items/:id**: Xóa mặt hàng khỏi đơn hàng (hoàn lại tồn kho và cập nhật lại tổng tiền đơn hàng).
+
+---
+
 ## 9. HƯỚNG DẪN KIỂM THỬ VỚI POSTMAN & SWAGGER UI
 
 ### 9.1. Kiểm thử trực quan trên Swagger UI
 
-Hệ thống cung cấp **2 giao diện Swagger UI riêng biệt** cho 2 dịch vụ độc lập:
+Hệ thống cung cấp **3 giao diện Swagger UI riêng biệt** cho 3 dịch vụ độc lập:
 1. **Auth Service Swagger:** `http://localhost:8000/swagger/`
 2. **Product Service Swagger:** `http://localhost:8001/swagger/`
+3. **Order Service Swagger:** `http://localhost:8002/swagger/`
 
 #### Các bước thực hiện:
 1. Truy cập Swagger của Auth Service tại `http://localhost:8000/swagger/`.
 2. Mở endpoint `POST /` (Login), nhấn **Try it out**, nhập tài khoản `testuser` và mật khẩu `MTIzNDU2`, bấm **Execute** và sao chép mã `token` được trả về.
-3. Mở Swagger của Product Service tại `http://localhost:8001/swagger/`.
+3. Mở Swagger của Product Service (`http://localhost:8001/swagger/`) hoặc Order Service (`http://localhost:8002/swagger/`).
 4. Bấm vào nút **Authorize 🔓** ở góc phải trên cùng của trang:
    - Dán chuỗi `token` vừa sao chép vào ô Value.
    - Nhấn **Authorize** rồi nhấn **Close**.
 5. Bây giờ bạn có thể trải nghiệm toàn bộ các thao tác:
-   - `GET /products`: Lấy danh sách sản phẩm.
-   - `POST /products`: Thêm mới sản phẩm.
-   - `GET /products/{pk}`: Lấy chi tiết.
-   - `PUT /products/{pk}`: Chỉnh sửa giá hoặc số lượng.
-   - `DELETE /products/{pk}`: Xóa sản phẩm.
+   - Thao tác sản phẩm trên cổng 8001: `GET /products`, `POST /products`, v.v.
+   - Thao tác đơn hàng trên cổng 8002: `GET /orders`, `POST /orders`, `GET /order_items`, v.v.
 6. Thử bấm **Logout** trong nút Authorize và gọi lại một API bất kỳ để quan sát hệ thống từ chối với mã lỗi `401 Unauthorized`!
 
 ---
@@ -669,21 +874,20 @@ Hệ thống cung cấp **2 giao diện Swagger UI riêng biệt** cho 2 dịch 
    { "userName": "testuser", "password": "MTIzNDU2" }
    ```
    Lấy chuỗi `token` trong phản hồi.
-2. **Bước 2 (Product Service):** Tạo request mới:
-   - URL: `http://localhost:8001/products`
-   - Tab **Authorization**: Chọn type **Bearer Token**, dán chuỗi token vào.
-   - Thử nghiệm gửi request không có token để thấy lỗi 401.
-   - Gửi kèm token để thấy danh sách toàn bộ sản phẩm 200 OK.
+2. **Bước 2 (Product Service):** Gọi `GET http://localhost:8001/products` với Header `Authorization: Bearer <token>` để kiểm tra số lượng tồn kho sản phẩm.
+3. **Bước 3 (Order Service):** Gửi `POST http://localhost:8002/orders` kèm token để đặt mua sản phẩm.
+4. **Bước 4 (Xác nhận tồn kho được trừ):** Gọi lại `GET http://localhost:8001/products` trên Product Service để thấy số lượng tồn kho `quantity` của sản phẩm đã tự động giảm đi chính xác!
 
 ---
 
 ## 10. KIỂM THỬ TỰ ĐỘNG (AUTOMATED UNIT TESTS)
 
-Dự án trang bị bộ kiểm thử tự động toàn diện với **tổng cộng 26 bài test độc lập**:
+Dự án trang bị bộ kiểm thử tự động toàn diện với **tổng cộng 49 bài test độc lập**:
 - **Service 1 (Auth Service):** 9 bài test tại [core/tests.py](file:///d:/CODES/Py/Django_Learning/core/tests.py)
 - **Service 2 (Product Service):** 17 bài test tại [product_service/products/tests.py](file:///d:/CODES/Py/Django_Learning/product_service/products/tests.py)
+- **Service 3 (Order Service):** 23 bài test tại [order_service/orders/tests.py](file:///d:/CODES/Py/Django_Learning/order_service/orders/tests.py)
 
-### Chạy toàn bộ 26 tests chỉ với 1 thao tác:
+### Chạy toàn bộ 49 tests chỉ với 1 thao tác:
 - **Trên Windows:** Nhấp đúp vào tệp script:
   ```cmd
   run_tests.bat
@@ -692,18 +896,28 @@ Dự án trang bị bộ kiểm thử tự động toàn diện với **tổng c
   ```powershell
   python manage.py test core
   python product_service/manage.py test products
+  python order_service/manage.py test orders
   ```
 
 ### Kết quả chạy kiểm thử thực tế (100% Passed):
 ```text
-[1/2] Kiem thu Service 1 (Auth Service)...
+========================================================
+  CHAY TOAN BO UNIT TESTS CHO CA 3 SERVICES (SOA)
+========================================================
+
+[1/3] Kiem thu Service 1 (Auth Service)...
 .........
-Ran 9 tests in 3.922s
+Ran 9 tests in 3.765s
 OK
 
-[2/2] Kiem thu Service 2 (Product Service)...
+[2/3] Kiem thu Service 2 (Product Service)...
 .................
-Ran 17 tests in 0.316s
+Ran 17 tests in 0.168s
+OK
+
+[3/3] Kiem thu Service 3 (Order Service)...
+.......................
+Ran 23 tests in 0.723s
 OK
 
 ========================================================
@@ -711,24 +925,30 @@ OK
 ========================================================
 ```
 
-### Danh mục 17 bài test của Service 2 (Product Service):
-1. `test_get_products_without_token_returns_401`: Chặn 401 khi không có token.
-2. `test_get_products_with_invalid_token_returns_401`: Chặn 401 khi token giả mạo.
-3. `test_get_products_with_expired_token_returns_401`: Chặn 401 khi token đã hết hạn.
-4. `test_get_all_products_success`: Lấy danh sách sản phẩm thành công với 200 OK.
-5. `test_create_product_success`: Tạo mới sản phẩm thành công với 201 Created.
-6. `test_create_product_invalid_price_returns_400`: Chặn 400 khi giá sản phẩm là số âm.
-7. `test_create_product_invalid_quantity_returns_400`: Chặn 400 khi số lượng là số âm.
-8. `test_create_product_empty_name_returns_400`: Chặn 400 khi tên sản phẩm để trống.
-9. `test_get_product_detail_success`: Lấy chi tiết thông tin sản phẩm thành công.
-10. `test_get_product_detail_not_found_returns_404`: Trả về 404 khi ID sản phẩm không tồn tại.
-11. `test_update_product_put_success`: Cập nhật toàn bộ thông tin sản phẩm thành công.
-12. `test_update_product_patch_success`: Cập nhật từng phần thông tin sản phẩm thành công.
-13. `test_delete_product_success`: Xóa sản phẩm khỏi database thành công.
-14. `test_delete_product_not_found_returns_404`: Trả về 404 khi xóa sản phẩm không tồn tại.
-15. `test_auth_service_http_integration_success`: Kiểm thử gọi HTTP xác thực thành công sang Auth Service.
-16. `test_auth_service_http_integration_unauthorized`: Kiểm thử xử lý khi Auth Service từ chối xác thực.
-17. `test_offline_fallback_jwt_verification`: Kiểm thử cơ chế giải mã JWT dự phòng nội bộ khi Auth Service offline.
+### Danh mục 23 bài test của Service 3 (Order Service):
+1. `test_get_orders_without_token_returns_401`: Chặn 401 khi không có token.
+2. `test_get_orders_with_invalid_token_returns_401`: Chặn 401 khi token giả mạo.
+3. `test_get_orders_with_expired_token_returns_401`: Chặn 401 khi token đã hết hạn.
+4. `test_offline_fallback_jwt_verification`: Tự động giải mã JWT dự phòng nội bộ khi Auth Service offline.
+5. `test_get_all_orders_success`: Lấy danh sách đơn hàng thành công (200 OK).
+6. `test_get_orders_filter_by_status`: Lọc đơn hàng theo trạng thái (`pending`, `completed`, `cancelled`).
+7. `test_get_orders_filter_by_search`: Tìm kiếm đơn hàng theo tên hoặc email khách hàng.
+8. `test_get_order_detail_success`: Lấy chi tiết đơn hàng kèm danh sách mặt hàng.
+9. `test_get_order_detail_not_found`: Trả về 404 khi ID đơn hàng không tồn tại.
+10. `test_create_order_success`: Tạo đơn hàng mới, tự động kiểm tra và trừ tồn kho SP.
+11. `test_create_order_insufficient_stock_fails`: Từ chối tạo đơn (400 Bad Request) khi thiếu hàng tồn kho.
+12. `test_create_order_invalid_data`: Chặn 400 khi tên khách hàng rỗng hoặc email sai định dạng.
+13. `test_update_order_status_to_completed`: Cập nhật trạng thái đơn hàng sang completed.
+14. `test_update_order_status_to_cancelled_restores_stock`: Chuyển đơn sang cancelled tự động hoàn trả tồn kho về Product Service.
+15. `test_delete_order_success`: Xóa đơn hàng thành công và tự động hoàn trả tồn kho.
+16. `test_get_all_order_items`: Lấy danh sách tất cả các chi tiết mặt hàng.
+17. `test_get_order_items_by_order_id`: Lọc danh sách mặt hàng theo `order_id`.
+18. `test_get_order_item_detail_success`: Lấy chi tiết một mặt hàng theo ID.
+19. `test_get_order_item_detail_not_found`: Trả về 404 khi ID mặt hàng không tồn tại.
+20. `test_create_order_item_success`: Thêm mặt hàng mới vào đơn hàng và tự động cập nhật tổng tiền `total_amount`.
+21. `test_create_order_item_insufficient_stock`: Chặn 400 khi thêm mặt hàng vào đơn bị thiếu tồn kho.
+22. `test_update_order_item_quantity`: Điều chỉnh số lượng mặt hàng, tự động bù trừ tồn kho và tính lại tổng tiền.
+23. `test_delete_order_item_success`: Xóa mặt hàng khỏi đơn hàng và tự động tính lại tổng tiền.
 
 ---
 
@@ -763,4 +983,4 @@ OK
 
 - **Đơn vị đào tạo:** Bộ môn Mạng máy tính & Truyền thông / Kỹ thuật Phần mềm
 - **Môn học:** Phát triển Ứng dụng Phân tán & Web Services (RESTful API)
-- **Tài liệu tham chiếu:** [BÀI THỰC HÀNH SỐ 1.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%201.pdf), [BÀI THỰC HÀNH SỐ 2.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%202.pdf) và [BÀI THỰC HÀNH SỐ 3.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%203.pdf)
+- **Tài liệu tham chiếu:** [BÀI THỰC HÀNH SỐ 1.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%201.pdf), [BÀI THỰC HÀNH SỐ 2.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%202.pdf), [BÀI THỰC HÀNH SỐ 3.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%203.pdf) và [BÀI THỰC HÀNH SỐ 4.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%204.pdf)
