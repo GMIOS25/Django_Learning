@@ -4,6 +4,7 @@
 > **Bài Thực Hành Số 2:** Router, Middleware và Bảo mật với JWT trong RESTful API  
 > **Bài Thực Hành Số 3:** Xây dựng Dịch vụ Quản lý Sản phẩm theo Kiến trúc Hướng Dịch vụ (SOA)  
 > **Bài Thực Hành Số 4:** Xây dựng Dịch vụ Quản lý Đơn hàng theo Kiến trúc Hướng Dịch vụ (SOA)  
+> **Bài Thực Hành Số 5:** Xây dựng Dịch vụ Báo cáo & Thống kê theo Kiến trúc Hướng Dịch vụ (SOA)  
 
 ---
 
@@ -27,7 +28,7 @@
 
 Dự án này là chuỗi thực hành hoàn chỉnh nhằm xây dựng hệ thống **RESTful API phân tán theo kiến trúc hướng dịch vụ (SOA - Service-Oriented Architecture)** sử dụng ngôn ngữ **Python** và nền tảng **Django / Django REST Framework (DRF)**.
 
-Dự án tích hợp đầy đủ nội dung của **cả 4 bài thực hành**:
+Dự án tích hợp đầy đủ nội dung của **cả 5 bài thực hành**:
 - **Bài thực hành số 1:** Thiết lập môi trường Python/Django, cài đặt REST Framework, xây dựng API đầu tiên in dòng chuỗi JSON `{"message": "hello-world"}` và kiểm thử qua Postman / Swagger.
 - **Bài thực hành số 2:** Mở rộng hệ thống thành **Authentication Service (Cổng 8000)**:
   - Cơ chế định tuyến linh hoạt (**Router & URL Rewrite**).
@@ -47,6 +48,13 @@ Dự án tích hợp đầy đủ nội dung của **cả 4 bài thực hành**:
   - Cơ chế xác thực liên dịch vụ: Thẩm định JWT thông qua Auth Service (`http://127.0.0.1:8000/auth`).
   - Kiểm tra và đồng bộ tồn kho liên dịch vụ: Tự động kiểm tra số lượng tồn kho và đơn giá từ Product Service (`http://127.0.0.1:8001/products`), trừ tồn kho khi đặt hàng và hoàn tồn kho khi hủy đơn hoặc xóa mặt hàng.
   - Tích hợp tài liệu tương tác Swagger UI tại `http://localhost:8002/swagger/`.
+- **Bài thực hành số 5:** Xây dựng **Reporting Service (Cổng 8003)** độc lập theo kiến trúc **SOA**:
+  - Chạy trên một cổng riêng (`localhost:8003/`) và cơ sở dữ liệu SQLite riêng (`reports_db.sqlite3`).
+  - Bảng báo cáo đơn hàng (`orders_reports`) và bảng báo cáo sản phẩm (`product_reports`).
+  - Bộ RESTful API thống kê doanh thu, chi phí, lợi nhuận theo đơn hàng (`/reports/orders`, `/reports/orders/:id`) và sản phẩm (`/reports/products`, `/reports/products/:id`).
+  - Cơ chế tích hợp dữ liệu liên dịch vụ: Tự động tổng hợp số liệu từ Order Service (`http://127.0.0.1:8002/orders`) và Product Service (`http://127.0.0.1:8001/products`).
+  - Thẩm định quyền truy cập thông qua Auth Service (`http://127.0.0.1:8000/auth`).
+  - Tích hợp tài liệu tương tác Swagger UI tại `http://localhost:8003/swagger/`.
 
 ---
 
@@ -98,33 +106,57 @@ Dự án tích hợp đầy đủ nội dung của **cả 4 bài thực hành**:
 | **10. Xác thực qua service ở Bài thực hành số 2** |  **100% Đạt** | Lớp xác thực [AuthServiceAuthentication](file:///d:/CODES/Py/Django_Learning/order_service/orders/authentication.py) thẩm định token JWT qua `http://127.0.0.1:8000/auth`. |
 | **11. Swagger UI & Kiểm thử tự động** |  **100% Đạt** | Giao diện tương tác Swagger UI tại `http://localhost:8002/swagger/`. Bộ 23 bài Unit & Integration Tests đạt 100% tại [order_service/orders/tests.py](file:///d:/CODES/Py/Django_Learning/order_service/orders/tests.py). |
 
+### Đối chiếu Bài Thực Hành Số 5:
+| Yêu cầu trong PDF Bài 5 | Tình trạng | Vị trí triển khai trong Codebase |
+| :--- | :---: | :--- |
+| **1. Khởi tạo một cổng mới cho service (`localhost:***3/`)** |  **100% Đạt** | Service báo cáo chạy độc lập trên cổng `8003` (`http://localhost:8003/`). Script khởi chạy riêng [run_report_service.bat](file:///d:/CODES/Py/Django_Learning/run_report_service.bat). |
+| **2. Cơ sở dữ liệu riêng biệt theo nguyên tắc SOA** |  **100% Đạt** | Tách cơ sở dữ liệu riêng `report_service/reports_db.sqlite3` không dùng chung bảng hay file với các service khác. |
+| **3. Bảng báo cáo đơn hàng (`orders_reports`) theo Phụ lục**<br>- `id`: INT (PK)<br>- `order_id`: INT (lưu vết Order Service)<br>- `total_revenue`: DECIMAL(10, 2)<br>- `total_cost`: DECIMAL(10, 2)<br>- `total_profit`: DECIMAL(10, 2) |  **100% Đạt** | Model `OrderReport` tại [report_service/reports/models.py](file:///d:/CODES/Py/Django_Learning/report_service/reports/models.py#L5). Tự động tính `total_profit = total_revenue - total_cost`. Đã migrate và đăng ký Django Admin [report_service/reports/admin.py](file:///d:/CODES/Py/Django_Learning/report_service/reports/admin.py). |
+| **4. Bảng báo cáo sản phẩm (`product_reports`) theo Phụ lục**<br>- `id`: INT (PK)<br>- `order_report_id`: INT (FK `orders_reports`)<br>- `product_id`: INT (lưu vết Product Service)<br>- `total_sold`: INT<br>- `revenue`: DECIMAL(10, 2)<br>- `cost`: DECIMAL(10, 2)<br>- `profit`: DECIMAL(10, 2) |  **100% Đạt** | Model `ProductReport` tại [report_service/reports/models.py](file:///d:/CODES/Py/Django_Learning/report_service/reports/models.py#L65). Tự động tính `profit = revenue - cost`. |
+| **5. RESTful API `GET /reports/orders` & `GET /reports/orders/:id`** |  **100% Đạt** | Triển khai tại [report_service/reports/views.py](file:///d:/CODES/Py/Django_Learning/report_service/reports/views.py). Hỗ trợ lọc theo `?order_id=`. |
+| **6. RESTful API `POST /reports/orders`** |  **100% Đạt** | Tạo báo cáo đơn hàng mới dựa trên dữ liệu từ Order Service (cổng 8002), tự động tạo các bản ghi `product_reports` tương ứng từ items của đơn hàng. |
+| **7. RESTful API `DELETE /reports/orders/:id`** |  **100% Đạt** | Xóa báo cáo đơn hàng (cascade xóa các báo cáo sản phẩm con). |
+| **8. RESTful API `GET /reports/products` & `GET /reports/products/:id`** |  **100% Đạt** | Lấy danh sách hoặc chi tiết báo cáo theo sản phẩm (hỗ trợ lọc `?product_id=`). |
+| **9. RESTful API `POST /reports/products`** |  **100% Đạt** | Tạo báo cáo sản phẩm mới dựa trên dữ liệu từ Product Service (8001) và Order Service (8002). |
+| **10. RESTful API `DELETE /reports/products/:id`** |  **100% Đạt** | Xóa báo cáo sản phẩm khỏi database. |
+| **11. Xác thực qua service ở Bài thực hành số 2** |  **100% Đạt** | Lớp xác thực [AuthServiceAuthentication](file:///d:/CODES/Py/Django_Learning/report_service/reports/authentication.py) thẩm định token JWT qua `http://127.0.0.1:8000/auth`. |
+| **12. Swagger UI & Kiểm thử tự động** |  **100% Đạt** | Giao diện tương tác Swagger UI tại `http://localhost:8003/swagger/`. Bộ 21 bài Unit & Integration Tests đạt 100% tại [report_service/reports/tests.py](file:///d:/CODES/Py/Django_Learning/report_service/reports/tests.py). |
+
 ---
 
 ## 3. KIẾN TRÚC HỆ THỐNG & LUỒNG XỬ LÝ (WORKFLOW SOA)
 
-### 3.1. Sơ đồ kiến trúc SOA (Kiến trúc hướng dịch vụ 3 Services độc lập)
+### 3.1. Sơ đồ kiến trúc SOA (Kiến trúc hướng dịch vụ 4 Services độc lập)
 ```text
-+------------------------------------------------------------------------------------------------------------------------+
-|                                        CLIENT (Postman / Browser / Swagger UI)                                         |
-+------------------------------------------------------------------------------------------------------------------------+
-           |                                             |                                               |
-  (1) POST /login (lấy JWT)                     (3) CRUD Sản phẩm                               (5) CRUD Đơn hàng & Items
-  http://localhost:8000/login                   http://localhost:8001/products                  http://localhost:8002/orders
-           |                                             |                                               |
-           v                                             v                                               v
-+-------------------------------+             +-------------------------------+               +-------------------------------+
-|    DỊCH VỤ 1: AUTH SERVICE    |             |  DỊCH VỤ 2: PRODUCT SERVICE   |               |   DỊCH VỤ 3: ORDER SERVICE    |
-|     (Chạy tại cổng :8000)     |  (4) /auth  |     (Chạy tại cổng :8001)     | (6b) check/   |     (Chạy tại cổng :8002)     |
-|                               |<------------|                               |<--------------|                               |
-| - Cấp phát & Thẩm định JWT    |  (Xác thực) | - CRUD Danh mục Sản phẩm      | deduct/restore| - CRUD Đơn hàng & Mặt hàng    |
-| - Middleware bảo vệ API       |             | - Kiểm tra & trừ tồn kho      | tồn kho SP    | - Tính tổng tiền tự động      |
-| - DB: db.sqlite3 (User)       |<------------------------------------------------------------| - DB: orders_db.sqlite3       |
-| - Swagger: :8000/swagger/     |                                 (6a) POST /auth (Xác thực)  | - Swagger: :8002/swagger/     |
-+-------------------------------+                                                             +-------------------------------+
++----------------------------------------------------------------------------------------------------------------------------------------------------+
+|                                                      CLIENT (Postman / Browser / Swagger UI)                                                       |
++----------------------------------------------------------------------------------------------------------------------------------------------------+
+           |                                             |                                               |                             |
+  (1) POST /login (lấy JWT)                     (3) CRUD Sản phẩm                               (5) CRUD Đơn hàng             (7) Xem & Tạo Báo cáo
+  http://localhost:8000/login                   http://localhost:8001/products                  http://localhost:8002/orders  http://localhost:8003/reports
+           |                                             |                                               |                             |
+           v                                             v                                               v                             v
++-------------------------------+             +-------------------------------+               +-------------------------------+   +-------------------------------+
+|    DỊCH VỤ 1: AUTH SERVICE    |             |  DỊCH VỤ 2: PRODUCT SERVICE   |               |   DỊCH VỤ 3: ORDER SERVICE    |   |  DỊCH VỤ 4: REPORTING SERVICE |
+|     (Chạy tại cổng :8000)     |  (4) /auth  |     (Chạy tại cổng :8001)     | (6b) check/   |     (Chạy tại cổng :8002)     |   |     (Chạy tại cổng :8003)     |
+|                               |<------------|                               |<--------------|                               |   |                               |
+| - Cấp phát & Thẩm định JWT    |  (Xác thực) | - CRUD Danh mục Sản phẩm      | deduct/restore| - CRUD Đơn hàng & Mặt hàng    |   | - Thống kê Doanh thu, Chi phí |
+| - Middleware bảo vệ API       |             | - Kiểm tra & trừ tồn kho      | tồn kho SP    | - Tính tổng tiền tự động      |   |   và Lợi nhuận theo SP/Đơn    |
+| - DB: db.sqlite3 (User)       |<------------------------------------------------------------| - DB: orders_db.sqlite3       |   | - DB: reports_db.sqlite3      |
+| - Swagger: :8000/swagger/     |                                 (6a) POST /auth (Xác thực)  | - Swagger: :8002/swagger/     |   | - Swagger: :8003/swagger/     |
++-------------------------------+                                                             +-------------------------------+   +-------------------------------+
+           ^                                                                                                  ^                                  |
+           |==================================================================================================|==================================|
+                                                        (8) POST /auth (Xác thực JWT) & GET /orders, /products
 ```
 
-### 3.2. Luồng xử lý nghiệp vụ đơn hàng & Tương tác liên dịch vụ (Inter-Service Workflow)
+### 3.2. Luồng xử lý nghiệp vụ liên dịch vụ (Inter-Service Workflow)
 1. **Bước 1 (Đăng nhập):** Client gửi `POST http://localhost:8000/login` lấy token JWT từ Auth Service.
+2. **Bước 2 (Quản lý Sản phẩm & Đơn hàng):** Client thực hiện tạo sản phẩm trên Product Service (8001) và tạo đơn hàng trên Order Service (8002).
+3. **Bước 3 (Tạo báo cáo tự động):** Client gửi `POST http://localhost:8003/reports/orders` kèm token và `order_id`:
+   - Reporting Service tự động gửi request sang Auth Service (`http://127.0.0.1:8000/auth`) để xác thực token.
+   - Reporting Service gọi sang Order Service (`http://127.0.0.1:8002/orders/<order_id>`) để lấy tổng doanh thu và danh sách các mặt hàng đã mua.
+   - Hệ thống tự động tính toán chi phí vốn, lợi nhuận ròng (`total_profit = total_revenue - total_cost`), lưu vào bảng `orders_reports` và tự động sinh các dòng `product_reports` chi tiết.
 2. **Bước 2 (Đặt đơn hàng):** Client gửi `POST http://localhost:8002/orders` kèm `Authorization: Bearer <token>` và danh sách sản phẩm cần mua (`items`).
 3. **Bước 3 (Xác thực danh tính):** Order Service tự động gọi `POST http://127.0.0.1:8000/auth` để xác thực token.
 4. **Bước 4 (Kiểm tra tồn kho):** Order Service gọi `GET http://127.0.0.1:8001/products/<id>` để kiểm tra số lượng tồn kho `quantity` của từng sản phẩm.
@@ -228,6 +260,48 @@ class OrderItem(models.Model):
 | **`unit_price`** | `DECIMAL(10, 2)` | `NOT NULL` | Đơn giá tại thời điểm đặt hàng |
 | **`total_price`** | `DECIMAL(10, 2)` | `quantity * unit_price` | Thành tiền từng mặt hàng |
 
+### 4.4. Bảng `orders_reports` & `product_reports` (Reporting Service - file `report_service/reports_db.sqlite3`)
+
+#### Bảng `orders_reports` (Báo cáo theo đơn hàng):
+```python
+class OrderReport(models.Model):
+    id = models.AutoField(primary_key=True, db_column='id')
+    order_id = models.IntegerField(db_column='order_id')
+    total_revenue = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), db_column='total_revenue')
+    total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), db_column='total_cost')
+    total_profit = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), db_column='total_profit')
+```
+
+| Tên trường (Column) | Kiểu dữ liệu | Thuộc tính / Ràng buộc | Mục đích sử dụng |
+| :--- | :--- | :--- | :--- |
+| **`id`** | `INT` (`AutoField`) | **PRIMARY KEY**, Auto Increment | ID duy nhất của báo cáo đơn hàng |
+| **`order_id`** | `INT` | `NOT NULL` | ID đơn hàng liên kết từ Order Service |
+| **`total_revenue`** | `DECIMAL(10, 2)` | `DEFAULT 0.00` | Tổng doanh thu của đơn hàng |
+| **`total_cost`** | `DECIMAL(10, 2)` | `DEFAULT 0.00` | Tổng chi phí nhập sản phẩm trong đơn hàng |
+| **`total_profit`** | `DECIMAL(10, 2)` | `total_revenue - total_cost` | Tổng lợi nhuận từ đơn hàng |
+
+#### Bảng `product_reports` (Báo cáo theo sản phẩm):
+```python
+class ProductReport(models.Model):
+    id = models.AutoField(primary_key=True, db_column='id')
+    order_report = models.ForeignKey(OrderReport, on_delete=models.CASCADE, related_name='product_reports', db_column='order_report_id', null=True, blank=True)
+    product_id = models.IntegerField(db_column='product_id')
+    total_sold = models.IntegerField(default=0, db_column='total_sold')
+    revenue = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), db_column='revenue')
+    cost = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), db_column='cost')
+    profit = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), db_column='profit')
+```
+
+| Tên trường (Column) | Kiểu dữ liệu | Thuộc tính / Ràng buộc | Mục đích sử dụng |
+| :--- | :--- | :--- | :--- |
+| **`id`** | `INT` (`AutoField`) | **PRIMARY KEY**, Auto Increment | ID duy nhất của báo cáo sản phẩm |
+| **`order_report_id`** | `INT` | `FOREIGN KEY` (`orders_reports.id`) | Liên kết báo cáo đơn hàng (nếu có) |
+| **`product_id`** | `INT` | `NOT NULL` | ID sản phẩm liên kết từ Product Service |
+| **`total_sold`** | `INT` | `DEFAULT 0`, `>= 0` | Tổng số lượng sản phẩm đã bán |
+| **`revenue`** | `DECIMAL(10, 2)` | `DEFAULT 0.00` | Doanh thu từ sản phẩm |
+| **`cost`** | `DECIMAL(10, 2)` | `DEFAULT 0.00` | Chi phí nhập sản phẩm |
+| **`profit`** | `DECIMAL(10, 2)` | `revenue - cost` | Lợi nhuận từ sản phẩm |
+
 ---
 
 ## 5. CẤU TRÚC THƯ MỤC MÃ NGUỒN
@@ -289,6 +363,25 @@ Django_Learning/
 │       ├── urls.py                     # Tuyến đường /orders và /order_items
 │       └── views.py                    # Controller CRUD Order & OrderItem (Kiểm tra tồn kho)
 │
+├── report_service/                     # SERVICE 4: Báo cáo & Thống kê (Bài 5 - SOA)
+│   ├── manage.py                       # CLI riêng cho Reporting Service (Port 8003)
+│   ├── reports_db.sqlite3              # Database SQLite riêng biệt của Reporting Service
+│   ├── report_project/                 # Cấu hình dự án Service 4
+│   │   ├── settings.py                 # DB riêng, AUTH, PRODUCT, ORDER URLs, Swagger :8003
+│   │   ├── urls.py                     # Định tuyến /reports/..., /swagger :8003
+│   │   ├── asgi.py & wsgi.py
+│   └── reports/                        # Ứng dụng Báo cáo
+│       ├── management/commands/seed_reports.py # Lệnh tạo dữ liệu báo cáo mẫu
+│       ├── migrations/0001_initial.py  # Schema bảng orders_reports và product_reports
+│       ├── admin.py                    # Quản trị Báo cáo trong Django Admin :8003
+│       ├── authentication.py           # Xác thực liên dịch vụ sang Service 1 (:8000/auth)
+│       ├── service_clients.py          # Kết nối Order Service (8002) và Product Service (8001)
+│       ├── models.py                   # Model OrderReport & ProductReport theo Phụ lục Bài 5
+│       ├── serializers.py              # Serializer dữ liệu báo cáo đơn hàng & sản phẩm
+│       ├── tests.py                    # 21 bài kiểm thử tự động cho Service 4
+│       ├── urls.py                     # Tuyến đường /reports/orders và /reports/products
+│       └── views.py                    # Controller thống kê doanh thu, chi phí, lợi nhuận
+│
 ├── docs/                               # Tài liệu đề bài gốc
 │   ├── BÀI THỰC HÀNH SỐ 1.pdf
 │   ├── BÀI THỰC HÀNH SỐ 2.pdf
@@ -296,11 +389,12 @@ Django_Learning/
 │   ├── BÀI THỰC HÀNH SỐ 4.pdf
 │   └── BÀI THỰC HÀNH SỐ 5.pdf
 │
-├── run_all_services.bat                # Script chạy đồng thời cả 3 services (Port 8000, 8001, 8002)
+├── run_all_services.bat                # Script chạy đồng thời cả 4 services (Port 8000, 8001, 8002, 8003)
 ├── run_auth_service.bat                # Script chạy riêng Service 1 (Cổng 8000)
 ├── run_product_service.bat             # Script chạy riêng Service 2 (Cổng 8001)
 ├── run_order_service.bat               # Script chạy riêng Service 3 (Cổng 8002)
-├── run_tests.bat                       # Script chạy 49 bài test của cả 3 services
+├── run_report_service.bat              # Script chạy riêng Service 4 (Cổng 8003)
+├── run_tests.bat                       # Script chạy 70 bài test của cả 4 services
 ├── db.sqlite3                          # Database của Auth Service
 ├── manage.py                           # CLI của Auth Service
 ├── requirements.txt                    # Thư viện phụ thuộc (Django, DRF, PyJWT, requests...)
@@ -357,7 +451,7 @@ pip install -r requirements.txt
 
 ---
 
-### Bước 3: Đồng bộ Cơ sở dữ liệu (Migration) cho cả 3 Services
+### Bước 3: Đồng bộ Cơ sở dữ liệu (Migration) cho cả 4 Services
 
 Khởi tạo và cập nhật cấu trúc database riêng cho từng service:
 ```bash
@@ -372,13 +466,17 @@ python product_service/manage.py migrate
 # 3. Đồng bộ bảng orders và order_items cho Order Service (Kiến trúc SOA)
 python order_service/manage.py makemigrations
 python order_service/manage.py migrate
+
+# 4. Đồng bộ bảng orders_reports và product_reports cho Reporting Service (Kiến trúc SOA)
+python report_service/manage.py makemigrations
+python report_service/manage.py migrate
 ```
 
 ---
 
 ### Bước 4: Nạp dữ liệu mẫu để kiểm thử (Seed Data)
 
-Dự án tích hợp sẵn 3 câu lệnh tạo nhanh tài khoản, danh mục sản phẩm và đơn hàng mẫu:
+Dự án tích hợp sẵn 4 câu lệnh tạo nhanh tài khoản, danh mục sản phẩm, đơn hàng và báo cáo mẫu:
 
 1. **Tạo tài khoản người dùng mẫu (Auth Service):**
    ```bash
@@ -401,9 +499,15 @@ Dự án tích hợp sẵn 3 câu lệnh tạo nhanh tài khoản, danh mục s�
    ```
    - Tự động nạp các đơn hàng mẫu kèm chi tiết mặt hàng theo trạng thái `pending`, `completed`, `cancelled`.
 
+4. **Tạo dữ liệu báo cáo thống kê mẫu (Reporting Service):**
+   ```bash
+   python report_service/manage.py seed_reports
+   ```
+   - Tự động nạp các bản ghi báo cáo doanh thu, chi phí và lợi nhuận mẫu.
+
 ---
 
-### Bước 5: Khởi động hệ thống (Chạy cả 3 Services)
+### Bước 5: Khởi động hệ thống (Chạy cả 4 Services)
 
 Bạn có thể lựa chọn 1 trong 2 cách sau:
 
@@ -412,10 +516,11 @@ Bạn có thể lựa chọn 1 trong 2 cách sau:
   ```cmd
   run_all_services.bat
   ```
-  Script sẽ tự động mở 3 cửa sổ terminal độc lập:
+  Script sẽ tự động mở 4 cửa sổ terminal độc lập:
   - Cửa sổ 1: Auth Service tại `http://localhost:8000` (Swagger: `http://localhost:8000/swagger/`)
   - Cửa sổ 2: Product Service tại `http://localhost:8001` (Swagger: `http://localhost:8001/swagger/`)
   - Cửa sổ 3: Order Service tại `http://localhost:8002` (Swagger: `http://localhost:8002/swagger/`)
+  - Cửa sổ 4: Reporting Service tại `http://localhost:8003` (Swagger: `http://localhost:8003/swagger/`)
 
 - **Cách 2: Khởi động thủ công qua lệnh Terminal riêng biệt:**
   - **Terminal 1 (Auth Service - Cổng 8000):**
@@ -429,6 +534,10 @@ Bạn có thể lựa chọn 1 trong 2 cách sau:
   - **Terminal 3 (Order Service - Cổng 8002):**
     ```bash
     python order_service/manage.py runserver 8002
+    ```
+  - **Terminal 4 (Reporting Service - Cổng 8003):**
+    ```bash
+    python report_service/manage.py runserver 8003
     ```
 
 ---
@@ -479,6 +588,22 @@ Bạn có thể lựa chọn 1 trong 2 cách sau:
 | **Swagger UI** | `GET` | `/swagger/` hoặc `/docs/` | Giao diện tài liệu Swagger Service 3 | Public |
 | **OpenAPI Schema** | `GET` | `/api/schema/` | Tải về cấu hình OpenAPI Service 3 | Public |
 | **Django Admin** | `GET` | `/admin/` | Trang quản trị dữ liệu Orders | Cần Superuser |
+
+#### D. DỊCH VỤ 4: REPORTING SERVICE (`http://localhost:8003`)
+| Chức năng | Phương thức | Đường dẫn (URL) | Mô tả tóm tắt | Quyền truy cập |
+| :--- | :---: | :--- | :--- | :---: |
+| **Thông tin Service** | `GET` | `/` | Trạng thái và danh mục API Báo cáo | Public |
+| **Danh sách báo cáo đơn hàng** | `GET` | `/reports/orders` | Lấy tất cả báo cáo đơn hàng (`?order_id=`) |  **Cần Bearer Token (Auth Service)** |
+| **Tạo báo cáo đơn hàng** | `POST` | `/reports/orders` | Tạo báo cáo đơn hàng (lấy dữ liệu từ Order Service) |  **Cần Bearer Token (Auth Service)** |
+| **Chi tiết báo cáo đơn hàng** | `GET` | `/reports/orders/<id>` | Xem chi tiết báo cáo đơn hàng kèm sản phẩm con |  **Cần Bearer Token (Auth Service)** |
+| **Xóa báo cáo đơn hàng** | `DELETE` | `/reports/orders/<id>` | Xóa báo cáo đơn hàng (cascade xóa báo cáo con) |  **Cần Bearer Token (Auth Service)** |
+| **Danh sách báo cáo sản phẩm** | `GET` | `/reports/products` | Lấy tất cả báo cáo sản phẩm (`?product_id=`) |  **Cần Bearer Token (Auth Service)** |
+| **Tạo báo cáo sản phẩm** | `POST` | `/reports/products` | Tạo báo cáo SP (dữ liệu từ Product/Order Service) |  **Cần Bearer Token (Auth Service)** |
+| **Chi tiết báo cáo sản phẩm** | `GET` | `/reports/products/<id>` | Xem chi tiết báo cáo của một sản phẩm |  **Cần Bearer Token (Auth Service)** |
+| **Xóa báo cáo sản phẩm** | `DELETE` | `/reports/products/<id>` | Xóa báo cáo sản phẩm khỏi database |  **Cần Bearer Token (Auth Service)** |
+| **Swagger UI** | `GET` | `/swagger/` hoặc `/docs/` | Giao diện tài liệu Swagger Service 4 | Public |
+| **OpenAPI Schema** | `GET` | `/api/schema/` | Tải về cấu hình OpenAPI Service 4 | Public |
+| **Django Admin** | `GET` | `/admin/` | Trang quản trị dữ liệu Báo cáo | Cần Superuser |
 
 ---
 
@@ -845,49 +970,60 @@ Bạn có thể lựa chọn 1 trong 2 cách sau:
 
 ---
 
+#### 8.13. API Báo cáo & Thống kê (Reporting Service - Cổng 8003)
+- **POST /reports/orders**: Tạo báo cáo theo đơn hàng mới (tự động liên lạc Order Service :8002 để lấy doanh thu `total_revenue`, tự động tính giá vốn và lợi nhuận `total_profit = total_revenue - total_cost`, đồng thời sinh ra các `product_reports` chi tiết).
+- **GET /reports/orders**: Lấy danh sách toàn bộ báo cáo đơn hàng (hỗ trợ `?order_id=`).
+- **GET /reports/orders/:id**: Xem chi tiết báo cáo đơn hàng kèm các mặt hàng con.
+- **DELETE /reports/orders/:id**: Xóa báo cáo đơn hàng (cascade xóa các báo cáo sản phẩm con).
+- **POST /reports/products**: Tạo báo cáo theo sản phẩm mới (dữ liệu tích hợp từ Product Service :8001 và Order Service :8002).
+- **GET /reports/products**: Lấy danh sách tất cả các báo cáo theo sản phẩm (hỗ trợ `?product_id=`).
+- **GET /reports/products/:id**: Xem chi tiết báo cáo của một sản phẩm.
+- **DELETE /reports/products/:id**: Xóa một báo cáo sản phẩm khỏi cơ sở dữ liệu.
+
+---
+
 ## 9. HƯỚNG DẪN KIỂM THỬ VỚI POSTMAN & SWAGGER UI
 
 ### 9.1. Kiểm thử trực quan trên Swagger UI
 
-Hệ thống cung cấp **3 giao diện Swagger UI riêng biệt** cho 3 dịch vụ độc lập:
+Hệ thống cung cấp **4 giao diện Swagger UI riêng biệt** cho 4 dịch vụ độc lập:
 1. **Auth Service Swagger:** `http://localhost:8000/swagger/`
 2. **Product Service Swagger:** `http://localhost:8001/swagger/`
 3. **Order Service Swagger:** `http://localhost:8002/swagger/`
+4. **Reporting Service Swagger:** `http://localhost:8003/swagger/`
 
 #### Các bước thực hiện:
 1. Truy cập Swagger của Auth Service tại `http://localhost:8000/swagger/`.
 2. Mở endpoint `POST /` (Login), nhấn **Try it out**, nhập tài khoản `testuser` và mật khẩu `MTIzNDU2`, bấm **Execute** và sao chép mã `token` được trả về.
-3. Mở Swagger của Product Service (`http://localhost:8001/swagger/`) hoặc Order Service (`http://localhost:8002/swagger/`).
+3. Mở Swagger của bất kỳ service nào (Product :8001, Order :8002, hoặc Reporting :8003).
 4. Bấm vào nút **Authorize 🔓** ở góc phải trên cùng của trang:
    - Dán chuỗi `token` vừa sao chép vào ô Value.
    - Nhấn **Authorize** rồi nhấn **Close**.
 5. Bây giờ bạn có thể trải nghiệm toàn bộ các thao tác:
-   - Thao tác sản phẩm trên cổng 8001: `GET /products`, `POST /products`, v.v.
-   - Thao tác đơn hàng trên cổng 8002: `GET /orders`, `POST /orders`, `GET /order_items`, v.v.
+   - Sản phẩm: `GET /products`, `POST /products`, v.v.
+   - Đơn hàng: `GET /orders`, `POST /orders`, `GET /order_items`, v.v.
+   - Báo cáo: `POST /reports/orders`, `GET /reports/products`, v.v.
 6. Thử bấm **Logout** trong nút Authorize và gọi lại một API bất kỳ để quan sát hệ thống từ chối với mã lỗi `401 Unauthorized`!
 
 ---
 
 ### 9.2. Kiểm thử luồng SOA hoàn chỉnh trên Postman
-1. **Bước 1 (Auth):** Gửi `POST http://localhost:8000/login` với body:
-   ```json
-   { "userName": "testuser", "password": "MTIzNDU2" }
-   ```
-   Lấy chuỗi `token` trong phản hồi.
-2. **Bước 2 (Product Service):** Gọi `GET http://localhost:8001/products` với Header `Authorization: Bearer <token>` để kiểm tra số lượng tồn kho sản phẩm.
-3. **Bước 3 (Order Service):** Gửi `POST http://localhost:8002/orders` kèm token để đặt mua sản phẩm.
-4. **Bước 4 (Xác nhận tồn kho được trừ):** Gọi lại `GET http://localhost:8001/products` trên Product Service để thấy số lượng tồn kho `quantity` của sản phẩm đã tự động giảm đi chính xác!
+1. **Bước 1 (Auth):** Gửi `POST http://localhost:8000/login` lấy token JWT.
+2. **Bước 2 (Product Service):** Gọi `GET http://localhost:8001/products` kiểm tra tồn kho.
+3. **Bước 3 (Order Service):** Gửi `POST http://localhost:8002/orders` tạo đơn hàng.
+4. **Bước 4 (Reporting Service):** Gửi `POST http://localhost:8003/reports/orders` với `{"order_id": 1}` để sinh báo cáo doanh thu, chi phí và lợi nhuận tự động.
 
 ---
 
 ## 10. KIỂM THỬ TỰ ĐỘNG (AUTOMATED UNIT TESTS)
 
-Dự án trang bị bộ kiểm thử tự động toàn diện với **tổng cộng 49 bài test độc lập**:
+Dự án trang bị bộ kiểm thử tự động toàn diện với **tổng cộng 70 bài test độc lập**:
 - **Service 1 (Auth Service):** 9 bài test tại [core/tests.py](file:///d:/CODES/Py/Django_Learning/core/tests.py)
 - **Service 2 (Product Service):** 17 bài test tại [product_service/products/tests.py](file:///d:/CODES/Py/Django_Learning/product_service/products/tests.py)
 - **Service 3 (Order Service):** 23 bài test tại [order_service/orders/tests.py](file:///d:/CODES/Py/Django_Learning/order_service/orders/tests.py)
+- **Service 4 (Reporting Service):** 21 bài test tại [report_service/reports/tests.py](file:///d:/CODES/Py/Django_Learning/report_service/reports/tests.py)
 
-### Chạy toàn bộ 49 tests chỉ với 1 thao tác:
+### Chạy toàn bộ 70 tests chỉ với 1 thao tác:
 - **Trên Windows:** Nhấp đúp vào tệp script:
   ```cmd
   run_tests.bat
@@ -897,27 +1033,29 @@ Dự án trang bị bộ kiểm thử tự động toàn diện với **tổng c
   python manage.py test core
   python product_service/manage.py test products
   python order_service/manage.py test orders
+  python report_service/manage.py test reports
   ```
 
 ### Kết quả chạy kiểm thử thực tế (100% Passed):
 ```text
 ========================================================
-  CHAY TOAN BO UNIT TESTS CHO CA 3 SERVICES (SOA)
+  CHAY TOAN BO UNIT TESTS CHO CA 4 SERVICES (SOA)
 ========================================================
 
-[1/3] Kiem thu Service 1 (Auth Service)...
-.........
-Ran 9 tests in 3.765s
+[1/4] Kiem thu Service 1 (Auth Service)...
+Ran 9 tests in 3.426s
 OK
 
-[2/3] Kiem thu Service 2 (Product Service)...
-.................
-Ran 17 tests in 0.168s
+[2/4] Kiem thu Service 2 (Product Service)...
+Ran 17 tests in 0.193s
 OK
 
-[3/3] Kiem thu Service 3 (Order Service)...
-.......................
-Ran 23 tests in 0.723s
+[3/4] Kiem thu Service 3 (Order Service)...
+Ran 23 tests in 0.591s
+OK
+
+[4/4] Kiem thu Service 4 (Reporting Service)...
+Ran 21 tests in 0.236s
 OK
 
 ========================================================
@@ -925,30 +1063,28 @@ OK
 ========================================================
 ```
 
-### Danh mục 23 bài test của Service 3 (Order Service):
-1. `test_get_orders_without_token_returns_401`: Chặn 401 khi không có token.
-2. `test_get_orders_with_invalid_token_returns_401`: Chặn 401 khi token giả mạo.
-3. `test_get_orders_with_expired_token_returns_401`: Chặn 401 khi token đã hết hạn.
+### Danh mục 21 bài test của Service 4 (Reporting Service):
+1. `test_get_order_reports_without_token_returns_401`: Chặn 401 khi xem báo cáo đơn không kèm token.
+2. `test_get_product_reports_without_token_returns_401`: Chặn 401 khi xem báo cáo sản phẩm không kèm token.
+3. `test_get_order_reports_with_invalid_token_returns_401`: Chặn 401 khi token sai lệch hoặc giả mạo.
 4. `test_offline_fallback_jwt_verification`: Tự động giải mã JWT dự phòng nội bộ khi Auth Service offline.
-5. `test_get_all_orders_success`: Lấy danh sách đơn hàng thành công (200 OK).
-6. `test_get_orders_filter_by_status`: Lọc đơn hàng theo trạng thái (`pending`, `completed`, `cancelled`).
-7. `test_get_orders_filter_by_search`: Tìm kiếm đơn hàng theo tên hoặc email khách hàng.
-8. `test_get_order_detail_success`: Lấy chi tiết đơn hàng kèm danh sách mặt hàng.
-9. `test_get_order_detail_not_found`: Trả về 404 khi ID đơn hàng không tồn tại.
-10. `test_create_order_success`: Tạo đơn hàng mới, tự động kiểm tra và trừ tồn kho SP.
-11. `test_create_order_insufficient_stock_fails`: Từ chối tạo đơn (400 Bad Request) khi thiếu hàng tồn kho.
-12. `test_create_order_invalid_data`: Chặn 400 khi tên khách hàng rỗng hoặc email sai định dạng.
-13. `test_update_order_status_to_completed`: Cập nhật trạng thái đơn hàng sang completed.
-14. `test_update_order_status_to_cancelled_restores_stock`: Chuyển đơn sang cancelled tự động hoàn trả tồn kho về Product Service.
-15. `test_delete_order_success`: Xóa đơn hàng thành công và tự động hoàn trả tồn kho.
-16. `test_get_all_order_items`: Lấy danh sách tất cả các chi tiết mặt hàng.
-17. `test_get_order_items_by_order_id`: Lọc danh sách mặt hàng theo `order_id`.
-18. `test_get_order_item_detail_success`: Lấy chi tiết một mặt hàng theo ID.
-19. `test_get_order_item_detail_not_found`: Trả về 404 khi ID mặt hàng không tồn tại.
-20. `test_create_order_item_success`: Thêm mặt hàng mới vào đơn hàng và tự động cập nhật tổng tiền `total_amount`.
-21. `test_create_order_item_insufficient_stock`: Chặn 400 khi thêm mặt hàng vào đơn bị thiếu tồn kho.
-22. `test_update_order_item_quantity`: Điều chỉnh số lượng mặt hàng, tự động bù trừ tồn kho và tính lại tổng tiền.
-23. `test_delete_order_item_success`: Xóa mặt hàng khỏi đơn hàng và tự động tính lại tổng tiền.
+5. `test_get_all_order_reports_success`: Lấy danh sách báo cáo đơn hàng thành công (200 OK).
+6. `test_get_order_reports_filter_by_order_id`: Lọc danh sách báo cáo đơn hàng theo `order_id`.
+7. `test_get_order_report_detail_success`: Lấy chi tiết báo cáo đơn hàng kèm sản phẩm con.
+8. `test_get_order_report_detail_not_found`: Trả về 404 khi ID báo cáo đơn không tồn tại.
+9. `test_create_order_report_success`: Tạo báo cáo đơn hàng tự động từ dữ liệu Order Service :8002.
+10. `test_create_order_report_with_custom_cost`: Tạo báo cáo đơn hàng với chi phí vốn tùy chọn.
+11. `test_create_order_report_order_not_found`: Trả về lỗi khi đơn hàng không tồn tại trên Order Service.
+12. `test_delete_order_report_success`: Xóa báo cáo đơn hàng và cascade xóa các báo cáo con.
+13. `test_get_all_product_reports_success`: Lấy danh sách tất cả các báo cáo theo sản phẩm.
+14. `test_get_product_reports_filter_by_product_id`: Lọc danh sách báo cáo theo `product_id`.
+15. `test_get_product_report_detail_success`: Lấy chi tiết báo cáo sản phẩm theo ID.
+16. `test_get_product_report_detail_not_found`: Trả về 404 khi ID báo cáo sản phẩm không tồn tại.
+17. `test_create_product_report_success`: Tạo báo cáo sản phẩm mới thành công.
+18. `test_create_product_report_auto_cost`: Tự động tính giá vốn 70% khi không truyền chi phí.
+19. `test_delete_product_report_success`: Xóa báo cáo sản phẩm thành công.
+20. `test_order_report_model_calculate_profit`: Kiểm thử công thức `total_profit = total_revenue - total_cost`.
+21. `test_product_report_model_calculate_profit`: Kiểm thử công thức `profit = revenue - cost`.
 
 ---
 
@@ -962,7 +1098,7 @@ OK
   .\venv\Scripts\Activate.ps1
   ```
 
-### 2. Gọi `/hello` luôn nhận thông báo lỗi 401 Unauthorized
+### 2. Gọi API luôn nhận thông báo lỗi 401 Unauthorized
 - **Nguyên nhân:** Bạn chưa truyền Header `Authorization` hoặc chưa thêm tiền tố `Bearer ` trước chuỗi token.
 - **Cách khắc phục:** Đảm bảo Header có định dạng chính xác:
   ```text
@@ -970,12 +1106,12 @@ OK
   ```
   *(Chú ý có dấu cách giữa từ `Bearer` và chuỗi token)*.
 
-### 3. Cổng 8000 bị xung đột hoặc đang được tiến trình khác sử dụng
-- **Cách khắc phục:** Khởi chạy máy chủ trên cổng khác (ví dụ cổng 8080):
-  ```powershell
-  python manage.py runserver 8080
-  ```
-  Khi đó đường dẫn API sẽ là `http://localhost:8080/`.
+### 3. Cổng bị xung đột hoặc đang được tiến trình khác sử dụng
+- **Cách khắc phục:** Khởi chạy máy chủ trên cổng khác:
+  - Auth Service: mặc định 8000
+  - Product Service: mặc định 8001
+  - Order Service: mặc định 8002
+  - Reporting Service: mặc định 8003
 
 ---
 
@@ -983,4 +1119,4 @@ OK
 
 - **Đơn vị đào tạo:** Bộ môn Mạng máy tính & Truyền thông / Kỹ thuật Phần mềm
 - **Môn học:** Phát triển Ứng dụng Phân tán & Web Services (RESTful API)
-- **Tài liệu tham chiếu:** [BÀI THỰC HÀNH SỐ 1.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%201.pdf), [BÀI THỰC HÀNH SỐ 2.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%202.pdf), [BÀI THỰC HÀNH SỐ 3.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%203.pdf) và [BÀI THỰC HÀNH SỐ 4.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%204.pdf)
+- **Tài liệu tham chiếu:** [BÀI THỰC HÀNH SỐ 1.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%201.pdf), [BÀI THỰC HÀNH SỐ 2.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%202.pdf), [BÀI THỰC HÀNH SỐ 3.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%203.pdf), [BÀI THỰC HÀNH SỐ 4.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%204.pdf) và [BÀI THỰC HÀNH SỐ 5.pdf](file:///d:/CODES/Py/Django_Learning/docs/B%C3%80I%20TH%E1%BB%B0C%20H%C3%80NH%20S%E1%BB%90%205.pdf)
